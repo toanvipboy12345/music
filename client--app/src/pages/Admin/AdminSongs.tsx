@@ -17,6 +17,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from '../../components/ui/dialog';
 import {
@@ -28,7 +29,7 @@ import {
 } from '../../components/ui/select';
 import { Checkbox } from '../../components/ui/checkbox';
 import { Toaster, toast } from 'sonner';
-import { Plus, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import api from '../../services/api';
 
 interface Song {
@@ -68,23 +69,24 @@ const AdminSongs: React.FC = () => {
   const [title, setTitle] = useState('');
   const [duration, setDuration] = useState('');
   const [releaseDate, setReleaseDate] = useState('');
-  const [mainArtist, setMainArtist] = useState<string>(''); // Ca sĩ chính
-  const [featArtists, setFeatArtists] = useState<string[]>([]); // Ca sĩ feat
-  const [featArtistInputs, setFeatArtistInputs] = useState<string[]>(['']); // Input cho ca sĩ feat
+  const [mainArtist, setMainArtist] = useState<string>('');
+  const [featArtists, setFeatArtists] = useState<string[]>([]);
   const [genreId, setGenreId] = useState('');
   const [isDownloadable, setIsDownloadable] = useState(false);
   const [audioFile, setAudioFile] = useState<File | null>(null);
+  const [imgFile, setImgFile] = useState<File | null>(null);
   const [artists, setArtists] = useState<Artist[]>([]);
   const [genres, setGenres] = useState<Genre[]>([]);
 
   // Fetch songs
   const fetchSongs = async (page: number, search: string) => {
     try {
-      const response = await api.get('/songs', {
+            console.log('Fetching song with:', { page, limit, search, token: localStorage.getItem('token') });
+      const response = await api.get('/admin/songs', {
         params: { page, limit, search },
       });
-      setSongs(response.data.songs);
-      setTotal(response.data.total);
+      setSongs(response.data.songs || []);
+      setTotal(response.data.total || 0);
     } catch (error: any) {
       toast.error('Không thể tải danh sách bài hát.', {
         description: 'Vui lòng thử lại sau.',
@@ -96,8 +98,8 @@ const AdminSongs: React.FC = () => {
   const fetchArtistsAndGenres = async () => {
     try {
       const [artistsResponse, genresResponse] = await Promise.all([
-        api.get('/artists'),
-        api.get('/genres'),
+        api.get('/admin/artists'),
+        api.get('/admin/genres'),
       ]);
       console.log('Artists:', artistsResponse.data);
       console.log('Genres:', genresResponse.data);
@@ -132,48 +134,16 @@ const AdminSongs: React.FC = () => {
   };
 
   // Handle file change
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAudioFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setAudioFile(e.target.files[0]);
     }
   };
 
-  // Handle add new feat artist input
-  const handleAddFeatArtistInput = () => {
-    setFeatArtistInputs([...featArtistInputs, '']);
-  };
-
-  // Handle feat artist input change
-  const handleFeatArtistInputChange = (index: number, value: string) => {
-    const newInputs = [...featArtistInputs];
-    newInputs[index] = value;
-    setFeatArtistInputs(newInputs);
-  };
-
-  // Handle remove feat artist input
-  const handleRemoveFeatArtistInput = (index: number) => {
-    setFeatArtistInputs(featArtistInputs.filter((_, i) => i !== index));
-  };
-
-  // Handle add feat artist to list
-  const handleAddFeatArtist = (index: number) => {
-    const artistName = featArtistInputs[index].trim();
-    if (!artistName) {
-      toast.error('Vui lòng chọn ca sĩ hợp tác.');
-      return;
+  const handleImgFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setImgFile(e.target.files[0]);
     }
-    if (mainArtist === artistName) {
-      toast.error('Ca sĩ này đã được chọn làm ca sĩ chính.');
-      return;
-    }
-    if (featArtists.includes(artistName)) {
-      toast.error('Ca sĩ này đã được chọn.');
-      return;
-    }
-    setFeatArtists([...featArtists, artistName]);
-    const newInputs = [...featArtistInputs];
-    newInputs[index] = '';
-    setFeatArtistInputs(newInputs);
   };
 
   // Handle create song
@@ -204,14 +174,15 @@ const AdminSongs: React.FC = () => {
       formData.append('title', title);
       formData.append('duration', duration);
       if (releaseDate) formData.append('release_date', releaseDate);
-      artistNames.forEach((name, index) => {
-        formData.append(`artist_names[${index}]`, name);
-      });
+      formData.append('artist_names', JSON.stringify(artistNames));
       formData.append('genre_id', genreId);
       formData.append('is_downloadable', isDownloadable.toString());
       formData.append('audio_file', audioFile);
+      if (imgFile) {
+        formData.append('img_file', imgFile);
+      }
 
-      await api.post('/songs', formData, {
+      await api.post('/admin/songs', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       toast.success('Thêm bài hát thành công.');
@@ -238,10 +209,10 @@ const AdminSongs: React.FC = () => {
     setReleaseDate('');
     setMainArtist('');
     setFeatArtists([]);
-    setFeatArtistInputs(['']);
     setGenreId('');
     setIsDownloadable(false);
     setAudioFile(null);
+    setImgFile(null);
   };
 
   // Format duration
@@ -332,6 +303,9 @@ const AdminSongs: React.FC = () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Thêm bài hát</DialogTitle>
+            <DialogDescription>
+              Điền thông tin bài hát mới vào các trường bên dưới.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
@@ -379,9 +353,7 @@ const AdminSongs: React.FC = () => {
                 </SelectTrigger>
                 <SelectContent>
                   {artists.length === 0 ? (
-                    <SelectItem value="" disabled>
-                      Không có ca sĩ
-                    </SelectItem>
+                    <div className="px-2 py-1 text-sm text-gray-500">Không có ca sĩ</div>
                   ) : (
                     artists.map((artist) => (
                       <SelectItem key={artist.artist_id} value={artist.stage_name}>
@@ -393,67 +365,34 @@ const AdminSongs: React.FC = () => {
               </Select>
             </div>
             <div>
-              <Label>Ca sĩ hợp tác (Feat)</Label>
-              <div className="space-y-2">
-                {featArtistInputs.map((input, index) => (
-                  <div key={index} className="flex space-x-2 items-center">
-                    <Select
-                      onValueChange={(value) => {
-                        if (value && !featArtists.includes(value) && value !== mainArtist) {
-                          const newInputs = [...featArtistInputs];
-                          newInputs[index] = value;
-                          setFeatArtistInputs(newInputs);
-                          setFeatArtists([...featArtists, value]);
-                        } else if (value === mainArtist) {
-                          toast.error('Ca sĩ này đã được chọn làm ca sĩ chính.');
-                        } else {
-                          toast.error('Ca sĩ này đã được chọn.');
-                        }
-                      }}
-                      value={input}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Chọn ca sĩ hợp tác" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {artists.length === 0 ? (
-                          <SelectItem value="" disabled>
-                            Không có ca sĩ
-                          </SelectItem>
-                        ) : (
-                          artists.map((artist) => (
-                            <SelectItem key={artist.artist_id} value={artist.stage_name}>
-                              {artist.stage_name}
-                            </SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </Select>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => handleAddFeatArtist(index)}
-                    >
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => handleRemoveFeatArtistInput(index)}
-                      disabled={featArtistInputs.length === 1 && !input}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-                <Button
-                  variant="outline"
-                  onClick={handleAddFeatArtistInput}
-                  className="mt-2"
-                >
-                  <Plus className="h-4 w-4 mr-2" /> Thêm ca sĩ hợp tác
-                </Button>
-              </div>
+              <Label htmlFor="feat_artists">Ca sĩ hợp tác (Feat)</Label>
+              <Select
+                onValueChange={(value) => {
+                  if (value && !featArtists.includes(value) && value !== mainArtist) {
+                    setFeatArtists([...featArtists, value]);
+                  } else if (value === mainArtist) {
+                    toast.error('Ca sĩ này đã được chọn làm ca sĩ chính.');
+                  } else if (featArtists.includes(value)) {
+                    toast.error('Ca sĩ này đã được chọn.');
+                  }
+                }}
+                value="" // Reset dropdown sau khi chọn
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Chọn ca sĩ hợp tác" />
+                </SelectTrigger>
+                <SelectContent>
+                  {artists.length === 0 ? (
+                    <div className="px-2 py-1 text-sm text-gray-500">Không có ca sĩ</div>
+                  ) : (
+                    artists.map((artist) => (
+                      <SelectItem key={artist.artist_id} value={artist.stage_name}>
+                        {artist.stage_name}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
               <div className="flex flex-wrap gap-2 mt-2">
                 {featArtists.map((name, index) => (
                   <span
@@ -480,9 +419,7 @@ const AdminSongs: React.FC = () => {
                 </SelectTrigger>
                 <SelectContent>
                   {genres.length === 0 ? (
-                    <SelectItem value="" disabled>
-                      Không có thể loại
-                    </SelectItem>
+                    <div className="px-2 py-1 text-sm text-gray-500">Chưa có thể loại nào được thêm</div>
                   ) : (
                     genres.map((genre) => (
                       <SelectItem key={genre.genre_id} value={genre.genre_id.toString()}>
@@ -499,7 +436,16 @@ const AdminSongs: React.FC = () => {
                 id="audio_file"
                 type="file"
                 accept="audio/*"
-                onChange={handleFileChange}
+                onChange={handleAudioFileChange}
+              />
+            </div>
+            <div>
+              <Label htmlFor="img_file">Ảnh bài hát</Label>
+              <Input
+                id="img_file"
+                type="file"
+                accept="image/*"
+                onChange={handleImgFileChange}
               />
             </div>
             <div className="flex items-center space-x-2">

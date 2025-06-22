@@ -49,7 +49,7 @@ export const Admin: React.FC = () => {
   };
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen ">
       {/* Sidebar Navigation */}
       <AdminNavigation onNavClick={setActivePage} activePage={activePage} />
 

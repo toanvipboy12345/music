@@ -22,30 +22,32 @@ export const AdminNavigation: React.FC<AdminNavigationProps> = ({ onNavClick, ac
     {
       section: 'dashboard',
       label: 'Bảng điều khiển',
-      icon: <Home className="w-5 h-5" />,
-      items: [{ page: 'dashboard', label: 'Tổng quan', icon: <Home className="w-5 h-5" /> }],
+      icon: <Home className="w-5 h-5 text-gray-400 group-hover:text-white transition-colors duration-200" />,
+      items: [
+        { page: 'dashboard', label: 'Tổng quan', icon: <Home className="w-5 h-5 text-gray-400 group-hover:text-white transition-colors duration-200" /> },
+      ],
     },
     {
       section: 'users',
       label: 'Quản lý người dùng',
-      icon: <Users className="w-5 h-5" />,
+      icon: <Users className="w-5 h-5 text-gray-400 group-hover:text-white transition-colors duration-200" />,
       items: [
-        { page: 'users', label: 'Người dùng', icon: <Users className="w-5 h-5" /> },
-        { page: 'interactions', label: 'Tương tác', icon: <Heart className="w-5 h-5" /> },
+        { page: 'users', label: 'Người dùng', icon: <Users className="w-5 h-5 text-gray-400 group-hover:text-white transition-colors duration-200" /> },
+        { page: 'interactions', label: 'Tương tác', icon: <Heart className="w-5 h-5 text-gray-400 group-hover:text-white transition-colors duration-200" /> },
       ],
     },
     {
       section: 'music',
       label: 'Quản lý nội dung âm nhạc',
-      icon: <Music className="w-5 h-5" />,
+      icon: <Music className="w-5 h-5 text-gray-400 group-hover:text-white transition-colors duration-200" />,
       items: [
-        { page: 'artists', label: 'Ca sĩ', icon: <Image className="w-5 h-5" /> },
-        { page: 'songs', label: 'Bài hát', icon: <Music className="w-5 h-5" /> },
-        { page: 'albums', label: 'Album', icon: <Disc className="w-5 h-5" /> },
-        { page: 'playlists', label: 'Danh sách phát', icon: <List className="w-5 h-5" /> },
-        { page: 'genres', label: 'Thể loại', icon: <Tag className="w-5 h-5" /> },
-        { page: 'reports', label: 'Báo cáo & Thống kê', icon: <BarChart className="w-5 h-5" /> },
-        { page: 'media', label: 'Nội dung đa phương tiện', icon: <Image className="w-5 h-5" /> },
+        { page: 'artists', label: 'Ca sĩ', icon: <Image className="w-5 h-5 text-gray-400 group-hover:text-white transition-colors duration-200" /> },
+        { page: 'songs', label: 'Bài hát', icon: <Music className="w-5 h-5 text-gray-400 group-hover:text-white transition-colors duration-200" /> },
+        { page: 'albums', label: 'Album', icon: <Disc className="w-5 h-5 text-gray-400 group-hover:text-white transition-colors duration-200" /> },
+        { page: 'playlists', label: 'Danh sách phát', icon: <List className="w-5 h-5 text-gray-400 group-hover:text-white transition-colors duration-200" /> },
+        { page: 'genres', label: 'Thể loại', icon: <Tag className="w-5 h-5 text-gray-400 group-hover:text-white transition-colors duration-200" /> },
+        { page: 'reports', label: 'Báo cáo & Thống kê', icon: <BarChart className="w-5 h-5 text-gray-400 group-hover:text-white transition-colors duration-200" /> },
+        { page: 'media', label: 'Nội dung đa phương tiện', icon: <Image className="w-5 h-5 text-gray-400 group-hover:text-white transition-colors duration-200" /> },
       ],
     },
   ];
@@ -55,10 +57,10 @@ export const AdminNavigation: React.FC<AdminNavigationProps> = ({ onNavClick, ac
       {/* Mobile Toggle Button */}
       <Button
         variant="ghost"
-        className="md:hidden fixed top-4 left-4 z-50 text-white"
+        className="md:hidden fixed top-4 left-4 z-50 text-white bg-gray-900 hover:bg-gray-900 rounded-none"
         onClick={() => setIsOpen(!isOpen)}
       >
-        {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+        {isOpen ? <X className="w-6 h-6 text-gray-400 group-hover:text-white transition-colors duration-200" /> : <Menu className="w-6 h-6 text-gray-400 group-hover:text-white transition-colors duration-200" />}
       </Button>
 
       {/* Sidebar */}
@@ -68,9 +70,13 @@ export const AdminNavigation: React.FC<AdminNavigationProps> = ({ onNavClick, ac
         } md:translate-x-0 z-40 overflow-y-auto`}
       >
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold">Admin Panel</h2>
-          <Button variant="ghost" className="md:hidden text-white" onClick={() => setIsOpen(false)}>
-            <X className="w-6 h-6" />
+          <h2 className="text-xl font-bold text-white">Admin Panel</h2>
+          <Button
+            variant="ghost"
+            className="md:hidden text-white bg-gray-900 hover:bg-gray-900 rounded-none"
+            onClick={() => setIsOpen(false)}
+          >
+            <X className="w-6 h-6 text-gray-400 group-hover:text-white transition-colors duration-200" />
           </Button>
         </div>
         <ul className="space-y-2">
@@ -83,15 +89,15 @@ export const AdminNavigation: React.FC<AdminNavigationProps> = ({ onNavClick, ac
                 <CollapsibleTrigger asChild>
                   <Button
                     variant="ghost"
-                    className="w-full justify-start text-left text-white hover:bg-gray-800"
+                    className="w-full justify-start text-left text-white bg-gray-900 hover:bg-gray-900 group border-l border-transparent hover:border-l-4 hover:border-gray-500 rounded-none"
                   >
                     <div className="flex items-center justify-between w-full">
                       <div className="flex items-center space-x-2">
                         {section.icon}
-                        <span>{section.label}</span>
+                        <span className="text-white">{section.label}</span>
                       </div>
                       <ChevronDown
-                        className={`w-4 h-4 transition-transform ${
+                        className={`w-4 h-4 text-gray-400 group-hover:text-white transition-colors duration-200 ${
                           openSections.includes(section.section) ? 'rotate-180' : ''
                         }`}
                       />
@@ -103,9 +109,9 @@ export const AdminNavigation: React.FC<AdminNavigationProps> = ({ onNavClick, ac
                     <Button
                       key={item.page}
                       variant={activePage === item.page ? 'secondary' : 'ghost'}
-                      className={`w-full justify-start text-left ${
-                        activePage === item.page ? 'bg-gray-700' : 'hover:bg-gray-800'
-                      } text-white`}
+                      className={`w-full justify-start text-left text-white bg-gray-900 hover:bg-gray-900 border-l border-transparent hover:border-l-4 hover:border-gray-500 ${
+                        activePage === item.page ? 'border-l-4 border-white' : ''
+                      } group rounded-none`}
                       onClick={() => {
                         onNavClick(item.page);
                         setIsOpen(false);
@@ -113,7 +119,7 @@ export const AdminNavigation: React.FC<AdminNavigationProps> = ({ onNavClick, ac
                     >
                       <div className="flex items-center space-x-2">
                         {item.icon}
-                        <span>{item.label}</span>
+                        <span className="text-white">{item.label}</span>
                       </div>
                     </Button>
                   ))}
