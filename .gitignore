@@ -1,0 +1,5 @@
+# Bỏ qua node_modules trong client-app
+client-app/node_modules/
+
+# Bỏ qua node_modules trong music-app
+music-app/node_modules/
