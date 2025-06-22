@@ -20,11 +20,11 @@ const Artist = sequelize.define('Artist', {
       }
     }
   },
-popularity: {
+  popularity: {
     type: DataTypes.INTEGER,
     allowNull: true,
     validate: {
-      min: 0, // Ràng buộc: popularity >= 0
+      min: 0,
     },
   },
   profile_picture: {

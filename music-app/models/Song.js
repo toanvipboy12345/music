@@ -35,36 +35,34 @@ const Song = sequelize.define('Song', {
   audio_file_url: {
     type: DataTypes.STRING(255),
     allowNull: false,
-    validate: {
-      isUrl: { msg: 'URL bài hát phải là URL hợp lệ' }
-    }
   },
   img: {
     type: DataTypes.STRING(255),
     allowNull: true,
-    validate: {
-      isUrl: { msg: 'URL ảnh bài hát phải là URL hợp lệ' }
-    }
+
   },
   artist_id: {
     type: DataTypes.INTEGER,
     allowNull: false,
     validate: {
       isInt: { msg: 'ID ca sĩ chính phải là số nguyên' }
+    },
+    references: {
+      model: 'Artists',
+      key: 'artist_id'
     }
   },
   feat_artist_ids: {
-    type: DataTypes.STRING, // JSON string, ví dụ: "[2,3]", chỉ chứa ID ca sĩ feat
-    allowNull: true, // Cho phép null vì bài hát có thể không có ca sĩ feat
+    type: DataTypes.STRING,
+    allowNull: true,
     validate: {
       isValidJsonArray(value) {
-        if (!value) return; // Cho phép null hoặc chuỗi rỗng
+        if (!value) return;
         try {
           const arr = JSON.parse(value);
           if (!Array.isArray(arr) || !arr.every(id => Number.isInteger(id))) {
             throw new Error('Danh sách ca sĩ feat phải là mảng JSON chứa các ID số nguyên');
           }
-          // Kiểm tra feat_artist_ids không chứa artist_id
           if (this.artist_id && arr.includes(this.artist_id)) {
             throw new Error('Danh sách ca sĩ feat không được chứa ID ca sĩ chính');
           }
@@ -79,6 +77,10 @@ const Song = sequelize.define('Song', {
     allowNull: false,
     validate: {
       isInt: { msg: 'ID thể loại phải là số nguyên' }
+    },
+    references: {
+      model: 'Genres',
+      key: 'genre_id'
     }
   },
   is_downloadable: {

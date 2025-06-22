@@ -1,34 +1,31 @@
 const axios = require('axios');
 const { Op } = require('sequelize');
-const Artist = require('../models/Artist');
+const { Artist } = require('../models'); // Nhập từ models/index.js
 
 exports.createArtist = async (req, res) => {
-  console.log('POST /artists called with body:', req.body); // Debug
+  console.log('POST /artists called with body:', req.body);
   try {
     const { stage_name } = req.body;
 
-    // Validate input
     if (!stage_name || typeof stage_name !== 'string' || stage_name.length < 1) {
-      console.log('Validation failed:', { stage_name }); // Debug
+      console.log('Validation failed:', { stage_name });
       return res.status(400).json({ message: 'Tên ca sĩ không hợp lệ' });
     }
 
-    // Check if artist already exists
     const existingArtist = await Artist.findOne({ where: { stage_name } });
     if (existingArtist) {
-      console.log('Artist already exists:', stage_name); // Debug
+      console.log('Artist already exists:', stage_name);
       return res.status(400).json({ message: `Ca sĩ ${stage_name} đã tồn tại` });
     }
 
-    // Get Spotify access token
     const clientId = process.env.SPOTIFY_CLIENT_ID;
     const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
-    console.log('Spotify credentials:', { clientId, clientSecret }); // Debug (ẩn giá trị thực khi log)
+    console.log('Spotify credentials:', { clientId, clientSecret });
     const auth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
     let accessToken;
 
     try {
-      console.log('Requesting Spotify token...'); // Debug
+      console.log('Requesting Spotify token...');
       const tokenResponse = await axios.post(
         'https://accounts.spotify.com/api/token',
         'grant_type=client_credentials',
@@ -40,34 +37,32 @@ exports.createArtist = async (req, res) => {
         }
       );
       accessToken = tokenResponse.data.access_token;
-      console.log('Spotify token received:', accessToken ? 'Success' : 'Failed'); // Debug
+      console.log('Spotify token received:', accessToken ? 'Success' : 'Failed');
     } catch (err) {
-      console.error('Spotify token error:', err.response?.data || err.message); // Debug
+      console.error('Spotify token error:', err.response?.data || err.message);
       return res.status(500).json({ message: 'Lỗi khi lấy token Spotify', error: err.message });
     }
 
-    // Search artist on Spotify
-    console.log('Searching Spotify for artist:', stage_name); // Debug
+    console.log('Searching Spotify for artist:', stage_name);
     const searchResponse = await axios.get(
       `https://api.spotify.com/v1/search?q=${encodeURIComponent(stage_name)}&type=artist&limit=1`,
       {
         headers: { Authorization: `Bearer ${accessToken}` },
       }
     );
-    console.log('Spotify search response:', searchResponse.data); // Debug
+    console.log('Spotify search response:', searchResponse.data);
 
     const spotifyArtist = searchResponse.data.artists.items[0];
     if (!spotifyArtist || spotifyArtist.name.toLowerCase() !== stage_name.toLowerCase()) {
-      console.log('Artist not found on Spotify:', stage_name); // Debug
+      console.log('Artist not found on Spotify:', stage_name);
       return res.status(404).json({ message: `Không tìm thấy ca sĩ ${stage_name} trên Spotify` });
     }
 
-    // Create artist
     console.log('Creating artist in database:', {
       stage_name: spotifyArtist.name,
       popularity: spotifyArtist.popularity,
       profile_picture: spotifyArtist.images[0]?.url || null,
-    }); // Debug
+    });
     const artist = await Artist.create({
       stage_name: spotifyArtist.name,
       popularity: spotifyArtist.popularity,
@@ -84,13 +79,13 @@ exports.createArtist = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Create artist error:', error.message, error.stack); // Debug
+    console.error('Create artist error:', error.message, error.stack);
     res.status(500).json({ message: 'Lỗi server', error: error.message });
   }
 };
 
 exports.getArtists = async (req, res) => {
-  console.log('GET /artists called with query:', req.query); // Debug
+  console.log('GET /artists called with query:', req.query);
   try {
     const { page = 1, limit = 10, search = '' } = req.query;
     const where = search ? { stage_name: { [Op.like]: `%${search}%` } } : {};
@@ -102,7 +97,7 @@ exports.getArtists = async (req, res) => {
       order: [['created_at', 'DESC']],
     });
     const total = await Artist.count({ where });
-    console.log('Artists fetched:', artists.length, 'Total:', total); // Debug
+    console.log('Artists fetched:', artists.length, 'Total:', total);
 
     res.json({
       message: 'Lấy danh sách ca sĩ thành công',
@@ -112,7 +107,7 @@ exports.getArtists = async (req, res) => {
       limit: parseInt(limit),
     });
   } catch (error) {
-    console.error('Get artists error:', error.message, error.stack); // Debug
+    console.error('Get artists error:', error.message, error.stack);
     res.status(500).json({ message: 'Lỗi server', error: error.message });
   }
 };
