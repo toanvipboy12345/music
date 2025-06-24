@@ -40,7 +40,7 @@ interface Song {
   audio_file_url: string;
   img: string | null;
   artist_id: number;
-  feat_artist_ids: string | null;
+  feat_artist_ids: number[] | null;
   genre_id: number;
   is_downloadable: boolean;
   created_at: string;
@@ -65,7 +65,10 @@ const AdminSongs: React.FC = () => {
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
   const [search, setSearch] = useState('');
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isSongDialogOpen, setIsSongDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [selectedSong, setSelectedSong] = useState<Song | null>(null);
+  const [dialogMode, setDialogMode] = useState<'create' | 'edit'>('create');
   const [title, setTitle] = useState('');
   const [duration, setDuration] = useState('');
   const [releaseDate, setReleaseDate] = useState('');
@@ -81,7 +84,7 @@ const AdminSongs: React.FC = () => {
   // Fetch songs
   const fetchSongs = async (page: number, search: string) => {
     try {
-            console.log('Fetching song with:', { page, limit, search, token: localStorage.getItem('token') });
+      console.log('Fetching song with:', { page, limit, search, token: localStorage.getItem('token') });
       const response = await api.get('/admin/songs', {
         params: { page, limit, search },
       });
@@ -146,8 +149,8 @@ const AdminSongs: React.FC = () => {
     }
   };
 
-  // Handle create song
-  const handleSaveSong = async () => {
+  // Handle save or update song
+  const handleSaveOrUpdateSong = async () => {
     try {
       if (!title.trim()) {
         toast.error('Vui lòng nhập tiêu đề bài hát.');
@@ -165,7 +168,7 @@ const AdminSongs: React.FC = () => {
         toast.error('Vui lòng chọn thể loại.');
         return;
       }
-      if (!audioFile) {
+      if (dialogMode === 'create' && !audioFile) {
         toast.error('Vui lòng chọn file âm thanh.');
         return;
       }
@@ -177,16 +180,26 @@ const AdminSongs: React.FC = () => {
       formData.append('artist_names', JSON.stringify(artistNames));
       formData.append('genre_id', genreId);
       formData.append('is_downloadable', isDownloadable.toString());
-      formData.append('audio_file', audioFile);
+      if (audioFile) {
+        formData.append('audio_file', audioFile);
+      }
       if (imgFile) {
         formData.append('img_file', imgFile);
       }
 
-      await api.post('/admin/songs', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      toast.success('Thêm bài hát thành công.');
-      setIsDialogOpen(false);
+      if (dialogMode === 'create') {
+        await api.post('/admin/songs', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        toast.success('Thêm bài hát thành công.');
+      } else {
+        if (!selectedSong) return;
+        await api.put(`/admin/songs/${selectedSong.song_id}`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        toast.success('Cập nhật bài hát thành công.');
+      }
+      setIsSongDialogOpen(false);
       resetForm();
       fetchSongs(page, search);
     } catch (error: any) {
@@ -196,10 +209,49 @@ const AdminSongs: React.FC = () => {
     }
   };
 
+  // Handle delete song
+  const handleDeleteSong = async () => {
+    if (!selectedSong) return;
+    try {
+      await api.delete(`/admin/songs/${selectedSong.song_id}`);
+      toast.success('Xóa bài hát thành công.');
+      setIsDeleteDialogOpen(false);
+      setSelectedSong(null);
+      fetchSongs(page, search);
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Có lỗi xảy ra.', {
+        description: 'Vui lòng kiểm tra lại.',
+      });
+    }
+  };
+
   // Open dialog for create
-  const openDialog = () => {
+  const openCreateDialog = () => {
     resetForm();
-    setIsDialogOpen(true);
+    setDialogMode('create');
+    setIsSongDialogOpen(true);
+  };
+
+  // Open dialog for edit
+  const openEditDialog = (song: Song) => {
+    setSelectedSong(song);
+    setTitle(song.title);
+    setDuration(song.duration.toString());
+    setReleaseDate(song.release_date || '');
+    setMainArtist(song.artists[0]?.stage_name || '');
+    setFeatArtists(song.artists.slice(1).map((a) => a.stage_name));
+    setGenreId(song.genre_id.toString());
+    setIsDownloadable(song.is_downloadable);
+    setAudioFile(null);
+    setImgFile(null);
+    setDialogMode('edit');
+    setIsSongDialogOpen(true);
+  };
+
+  // Open dialog for delete
+  const openDeleteDialog = (song: Song) => {
+    setSelectedSong(song);
+    setIsDeleteDialogOpen(true);
   };
 
   // Reset form
@@ -213,6 +265,7 @@ const AdminSongs: React.FC = () => {
     setIsDownloadable(false);
     setAudioFile(null);
     setImgFile(null);
+    setSelectedSong(null);
   };
 
   // Format duration
@@ -236,7 +289,7 @@ const AdminSongs: React.FC = () => {
             className="w-full"
           />
         </div>
-        <Button onClick={openDialog}>Thêm bài hát</Button>
+        <Button onClick={openCreateDialog}>Thêm bài hát</Button>
       </div>
 
       {/* Songs Table */}
@@ -245,18 +298,20 @@ const AdminSongs: React.FC = () => {
           <TableRow>
             <TableHead>ID</TableHead>
             <TableHead>Tiêu đề</TableHead>
+            <TableHead>Hình ảnh</TableHead>
             <TableHead>Ca sĩ</TableHead>
             <TableHead>Thể loại</TableHead>
             <TableHead>Thời lượng</TableHead>
             <TableHead>Ngày phát hành</TableHead>
             <TableHead>Tải xuống</TableHead>
             <TableHead>Ngày tạo</TableHead>
+            <TableHead>Hành động</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {songs.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={8} className="text-center">
+              <TableCell colSpan={10} className="text-center">
                 Không có bài hát nào được tìm thấy.
               </TableCell>
             </TableRow>
@@ -265,6 +320,24 @@ const AdminSongs: React.FC = () => {
               <TableRow key={song.song_id}>
                 <TableCell>{song.song_id}</TableCell>
                 <TableCell>{song.title}</TableCell>
+                <TableCell>
+                  {song.img ? (
+                    <img
+                      src={song.img}
+                      alt={song.title}
+                      className="w-1/3 h-auto object-cover"
+                      onError={(e) => {
+                        e.currentTarget.src = '/placeholder.png';
+                      }}
+                    />
+                  ) : (
+                    <img
+                      src="/placeholder.png"
+                      alt="No image"
+                      className="w-12 h-12 object-cover rounded"
+                    />
+                  )}
+                </TableCell>
                 <TableCell
                   title={song.artists.map((a) => a.stage_name).join(', ')}
                 >
@@ -279,6 +352,16 @@ const AdminSongs: React.FC = () => {
                 </TableCell>
                 <TableCell>{song.is_downloadable ? 'Có' : 'Không'}</TableCell>
                 <TableCell>{new Date(song.created_at).toLocaleDateString()}</TableCell>
+                <TableCell>
+                  <div className="flex space-x-2">
+                    <Button variant="outline" size="sm" onClick={() => openEditDialog(song)}>
+                      Sửa
+                    </Button>
+                    <Button variant="destructive" size="sm" onClick={() => openDeleteDialog(song)}>
+                      Xóa
+                    </Button>
+                  </div>
+                </TableCell>
               </TableRow>
             ))
           )}
@@ -298,13 +381,15 @@ const AdminSongs: React.FC = () => {
         </Button>
       </div>
 
-      {/* Dialog for Create */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      {/* Dialog for Create/Edit Song */}
+      <Dialog open={isSongDialogOpen} onOpenChange={setIsSongDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Thêm bài hát</DialogTitle>
+            <DialogTitle>{dialogMode === 'create' ? 'Thêm bài hát' : 'Sửa bài hát'}</DialogTitle>
             <DialogDescription>
-              Điền thông tin bài hát mới vào các trường bên dưới.
+              {dialogMode === 'create'
+                ? 'Điền thông tin bài hát mới vào các trường bên dưới.'
+                : 'Cập nhật thông tin bài hát bên dưới. Các trường không thay đổi có thể để trống.'}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -405,7 +490,7 @@ const AdminSongs: React.FC = () => {
                       className="ml-2 text-red-500"
                       onClick={() => setFeatArtists(featArtists.filter((_, i) => i !== index))}
                     >
-                      ×
+                      <X size={16} />
                     </button>
                   </span>
                 ))}
@@ -438,6 +523,11 @@ const AdminSongs: React.FC = () => {
                 accept="audio/*"
                 onChange={handleAudioFileChange}
               />
+              {dialogMode === 'edit' && selectedSong?.audio_file_url && (
+                <p className="text-sm text-gray-500">
+                  File hiện tại: {selectedSong.audio_file_url.split('/').pop()}
+                </p>
+              )}
             </div>
             <div>
               <Label htmlFor="img_file">Ảnh bài hát</Label>
@@ -447,6 +537,21 @@ const AdminSongs: React.FC = () => {
                 accept="image/*"
                 onChange={handleImgFileChange}
               />
+              {dialogMode === 'edit' && selectedSong?.img && (
+                <div className="mt-2">
+                  <p className="text-sm text-gray-500">
+                    Ảnh hiện tại: {selectedSong.img.split('/').pop()}
+                  </p>
+                  <img
+                    src={selectedSong.img}
+                    alt={selectedSong.title}
+                    className="w-24 h-24 object-cover rounded mt-1"
+                    onError={(e) => {
+                      e.currentTarget.src = '/placeholder.png'; // Placeholder nếu ảnh lỗi
+                    }}
+                  />
+                </div>
+              )}
             </div>
             <div className="flex items-center space-x-2">
               <Checkbox
@@ -458,10 +563,32 @@ const AdminSongs: React.FC = () => {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+            <Button variant="outline" onClick={() => setIsSongDialogOpen(false)}>
               Hủy
             </Button>
-            <Button onClick={handleSaveSong}>Lưu</Button>
+            <Button onClick={handleSaveOrUpdateSong}>
+              {dialogMode === 'create' ? 'Lưu' : 'Cập nhật'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog for Delete */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Xóa bài hát</DialogTitle>
+            <DialogDescription>
+              Bạn có chắc chắn muốn xóa bài hát "{selectedSong?.title}"? Hành động này không thể hoàn tác.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+              Hủy
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteSong}>
+              Xóa
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

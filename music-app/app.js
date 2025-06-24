@@ -18,7 +18,7 @@ app.use(morgan('dev'));
 
 // Serve static files from uploads/songs
 app.use('/uploads/songs', express.static(path.join(__dirname, 'Uploads/songs')));
-
+app.use('/uploads/album', express.static(path.join(__dirname, 'Uploads/album')));
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);

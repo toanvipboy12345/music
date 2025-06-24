@@ -4,7 +4,7 @@ import { AdminNavigation } from '../components/layout/AdminNavigation';
 import { AdminUsers } from './Admin/AdminUsers';
 import  AdminArtists  from './Admin/AdminArtists';
 import  AdminSongs from './Admin/AdminSongs';
-import { AdminAlbums } from './Admin/AdminAlbums';
+import  AdminAlbums  from './Admin/AdminAlbums';
 import { AdminPlaylists } from './Admin/AdminPlaylists';
 import  AdminGenres  from './Admin/AdminGenres';
 import { AdminUserInteractions } from './Admin/AdminUserInteractions';
