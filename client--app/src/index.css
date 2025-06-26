@@ -2,7 +2,7 @@
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
-
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700&display=swap');
 :root {
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;

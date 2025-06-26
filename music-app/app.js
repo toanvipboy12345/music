@@ -4,6 +4,7 @@ const morgan = require('morgan');
 const path = require('path');
 const authRoutes = require('./routes/authRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const publicRoutes = require('./routes/publicRoutes'); // Route cho public
 const errorMiddleware = require('./middleware/errors');
 const sequelize = require('./config/database');
 const User = require('./models/User');
@@ -22,7 +23,7 @@ app.use('/uploads/album', express.static(path.join(__dirname, 'Uploads/album')))
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
-
+app.use('/api/public', publicRoutes); // Route cho public
 // Error handling
 app.use(errorMiddleware);
 

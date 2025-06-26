@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '../context/authContext';
@@ -23,7 +24,7 @@ export const Login: React.FC = () => {
           navigate('/');
         }
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Đăng nhập thất bại:', error.message);
       // Hiển thị lỗi cho người dùng nếu cần (tùy bạn thêm UI)
     }
@@ -40,16 +41,20 @@ export const Login: React.FC = () => {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="w-full p-2 border"
+            placeholder="Nhập email"
+            title="Email"
           />
         </div>
         <div>
-          <label>Mật khẩu</label>
           <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="w-full p-2 border"
+            placeholder="Nhập mật khẩu"
+            title="Mật khẩu"
           />
+          
         </div>
         <Button type="submit">Đăng nhập</Button>
       </form>
