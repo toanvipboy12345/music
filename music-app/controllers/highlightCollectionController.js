@@ -29,7 +29,6 @@ const getHighlightCollections = async (req, res) => {
   }
 };
 
-// Lấy chi tiết tuyển tập (10 bài hát ngẫu nhiên của ca sĩ)
 const getHighlightCollectionByArtist = async (req, res) => {
   try {
     const { artist_id } = req.params;
@@ -68,7 +67,10 @@ const getHighlightCollectionByArtist = async (req, res) => {
       ]
     });
 
-    // Xử lý danh sách bài hát để thêm thông tin ca sĩ feat
+    // Tạo base URL từ request
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+
+    // Xử lý danh sách bài hát để thêm thông tin ca sĩ feat và artist_name
     const songsWithFeats = await Promise.all(
       songs.map(async (song) => {
         let featArtists = [];
@@ -92,9 +94,10 @@ const getHighlightCollectionByArtist = async (req, res) => {
           title: song.title,
           duration: song.duration,
           release_date: song.release_date,
-          audio_file_url: song.audio_file_url,
-          img: song.img,
+          audio_file_url: song.audio_file_url ? `${baseUrl}${song.audio_file_url}` : null,
+          img: song.img ? `${baseUrl}${song.img}` : null,
           artist_id: song.artist_id,
+          artist_name: artist.stage_name, // Thêm tên ca sĩ chính
           feat_artists: featArtists,
           album_name: song.Album ? song.Album.title : null,
           is_downloadable: song.is_downloadable,
@@ -107,7 +110,7 @@ const getHighlightCollectionByArtist = async (req, res) => {
       artist_id: artist.artist_id,
       title: `This Is ${artist.stage_name}`,
       artist_name: artist.stage_name,
-      img: artist.profile_picture,
+      img: artist.profile_picture, 
       popularity: artist.popularity,
       created_at: artist.created_at
     };

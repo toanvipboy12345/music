@@ -1,11 +1,15 @@
 import React from 'react';
+import { Outlet } from 'react-router-dom';
 import { UserHeader } from './UserHeader';
 import { UserNavigation } from './UserNavigation';
-import { Outlet } from 'react-router-dom'; // Component để render các route con
+import AudioPlayer from '../AudioPlayer';
+import { useAudio } from '../../context/AudioContext';
 
 export const MainLayout: React.FC = () => {
+  const { currentSong, isExpanded, setIsExpanded, setCurrentSong } = useAudio();
+
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen relative">
       {/* Hàng 1: Header */}
       <div className="w-full">
         <UserHeader />
@@ -19,11 +23,21 @@ export const MainLayout: React.FC = () => {
         </div>
 
         {/* Main Content - 8 phần */}
-        <div className="w-8/10  bg-neutral-900 rounded-lg">
+        <div className="w-8/10 bg-neutral-900 rounded-lg">
           <main>
-            <Outlet /> {/* Render các page con như Home hoặc CollectionDetail */}
+            <Outlet />
           </main>
         </div>
+      </div>
+
+      {/* Audio Player - Absolute ở dưới cùng */}
+      <div className="absolute bottom-0 left-0 right-0">
+        <AudioPlayer
+          song={currentSong}
+          onClose={() => setCurrentSong(null)}
+          isExpanded={isExpanded}
+          setIsExpanded={setIsExpanded}
+        />
       </div>
     </div>
   );

@@ -1,0 +1,70 @@
+/* Tùy chỉnh giao diện mini player */
+.rhap-custom-mini {
+  background-color: transparent !important;
+  box-shadow: none !important;
+  max-width: 700px; /* Giới hạn chiều rộng tối đa */
+}
+
+.rhap-custom-mini .rhap_container {
+  width: 100%;
+  height: 40px;
+  background-color: transparent !important;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.rhap-custom-mini .rhap_controls {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin-bottom: 2px;
+}
+
+.rhap-custom-mini .rhap_progress-section {
+  width: 100%;
+  margin: 0 2px;
+}
+
+.rhap-custom-mini .rhap_progress-filled {
+  background-color: #fff; /* Thanh progress bar màu trắng */
+}
+
+.rhap-custom-mini .rhap_progress-bar {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.rhap-custom-mini .rhap_time {
+  color: #fff;
+  font-size: 12px; /* Hiển thị thời gian với kích thước phù hợp */
+  display: block; /* Bật hiển thị thời gian */
+}
+
+.rhap-custom-mini .rhap_controls-section {
+  justify-content: center;
+}
+
+.rhap-custom-mini .rhap_main-controls-button {
+  color: #fff;
+  font-size: 45px; /* Tăng kích thước nút play */
+  margin: 0 4px;
+  display: flex;
+  justify-content: center;
+}
+
+.rhap-custom-mini .rhap_skip-button {
+  color: #fff;
+  font-size: 30px; /* Tăng kích thước nút prev/next */
+  margin: 0 4px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Tùy chỉnh container chính */
+.player-container {
+  height: 64px; /* Chiều cao cố định */
+  display: flex;
+  justify-content: center;
+}

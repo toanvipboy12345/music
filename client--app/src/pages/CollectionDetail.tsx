@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from "react";
-import { useParams, useLocation } from "react-router-dom";
-import Skeleton from "react-loading-skeleton";
-import "react-loading-skeleton/dist/skeleton.css";
-import { Clock, Play, List, Plus, Download, MoreHorizontal } from "react-feather";
-import api from "../services/api";
+import React, { useEffect, useState } from 'react';
+import { useParams, useLocation } from 'react-router-dom';
+import Skeleton from 'react-loading-skeleton';
+import 'react-loading-skeleton/dist/skeleton.css';
+import { Clock, Play, List, Download, MoreHorizontal } from 'react-feather';
+import api from '../services/api';
+import { useAudio } from '../context/AudioContext';
 
 interface Song {
   song_id: number;
@@ -17,6 +18,7 @@ interface Song {
   album_name: string | null;
   is_downloadable: boolean;
   created_at: string;
+  artist_name: string;
 }
 
 interface CollectionDetail {
@@ -34,85 +36,72 @@ interface CollectionDetail {
 export const CollectionDetail: React.FC = () => {
   const { artist_id } = useParams<{ artist_id: string }>();
   const location = useLocation();
-  const [collectionDetail, setCollectionDetail] =
-    useState<CollectionDetail | null>(null);
+  const [collectionDetail, setCollectionDetail] = useState<CollectionDetail | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [hoveredSongId, setHoveredSongId] = useState<number | null>(null);
+  const { setCurrentSong, setIsExpanded, setArtistName, setPlaylist, setCurrentSongIndex } = useAudio();
 
   useEffect(() => {
     const fetchCollectionDetail = async () => {
       try {
-        const response = await api.get(
-          `/public/highlight-collections/${artist_id}`
-        );
+        const response = await api.get(`/public/highlight-collections/${artist_id}`);
         setCollectionDetail(response.data.data);
+        setArtistName(response.data.data.collection.artist_name);
       } catch (err) {
-        setError("Không thể tải chi tiết tuyển tập");
+        setError('Không thể tải chi tiết tuyển tập');
         console.error(err);
       } finally {
         setLoading(false);
       }
     };
     if (artist_id) fetchCollectionDetail();
-    console.log("Location State in useEffect:", location.state); // Debug
-  }, [artist_id]);
+    console.log('Location State in useEffect:', location.state);
+  }, [artist_id, setArtistName]);
 
   const formatDuration = (seconds: number): string => {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
-    return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
-  // Lấy màu từ state, mặc định là bg-pink-200
-  console.log("Location State:", location.state); // Debug
-  const baseColor = location.state?.baseColor || "bg-pink-200";
-  const gradientFrom = baseColor.replace("bg-", "");
-  console.log("Applied Gradient From:", gradientFrom); // Debug
+  const handleSongClick = (song: Song, index: number) => {
+    setCurrentSong(song);
+    setPlaylist(collectionDetail?.songs || []); // Lưu toàn bộ danh sách bài hát
+    setCurrentSongIndex(index); // Lưu chỉ số bài hát được chọn
+    setIsExpanded(false);
+  };
 
-  // Ánh xạ gradientFrom thành class tĩnh
-  let gradientClass = "bg-gradient-to-b from-pink-200 to-neutral-900"; // Mặc định
+  const handlePlayCollection = () => {
+    if (collectionDetail?.songs && collectionDetail.songs.length > 0) {
+      setCurrentSong(collectionDetail.songs[0]); // Phát bài hát đầu tiên
+      setPlaylist(collectionDetail.songs); // Lưu danh sách bài hát
+      setCurrentSongIndex(0); // Đặt chỉ số bài đầu tiên
+      setIsExpanded(false);
+    }
+  };
+
+  const baseColor = location.state?.baseColor || 'bg-pink-200';
+  const gradientFrom = baseColor.replace('bg-', '');
+  let gradientClass = 'bg-gradient-to-b from-pink-200 to-neutral-900';
   switch (gradientFrom) {
-    case "pink-200":
-      gradientClass = "bg-gradient-to-b from-pink-200 to-neutral-900";
-      break;
-    case "yellow-200":
-      gradientClass = "bg-gradient-to-b from-yellow-200 to-neutral-900";
-      break;
-    case "orange-200":
-      gradientClass = "bg-gradient-to-b from-orange-200 to-neutral-900";
-      break;
-    case "green-200":
-      gradientClass = "bg-gradient-to-b from-green-200 to-neutral-900";
-      break;
-    case "blue-200":
-      gradientClass = "bg-gradient-to-b from-blue-200 to-neutral-900";
-      break;
-    case "purple-200":
-      gradientClass = "bg-gradient-to-b from-purple-200 to-neutral-900";
-      break;
-    case "red-200":
-      gradientClass = "bg-gradient-to-b from-red-200 to-neutral-900";
-      break;
-    case "teal-200":
-      gradientClass = "bg-gradient-to-b from-teal-200 to-neutral-900";
-      break;
-    case "indigo-200":
-      gradientClass = "bg-gradient-to-b from-indigo-200 to-neutral-900";
-      break;
-    case "amber-200":
-      gradientClass = "bg-gradient-to-b from-amber-200 to-neutral-900";
-      break;
-    default:
-      gradientClass = "bg-gradient-to-b from-pink-200 to-neutral-900";
+    case 'pink-200': gradientClass = 'bg-gradient-to-b from-pink-200 to-neutral-900'; break;
+    case 'yellow-200': gradientClass = 'bg-gradient-to-b from-yellow-200 to-neutral-900'; break;
+    case 'orange-200': gradientClass = 'bg-gradient-to-b from-orange-200 to-neutral-900'; break;
+    case 'green-200': gradientClass = 'bg-gradient-to-b from-green-200 to-neutral-900'; break;
+    case 'blue-200': gradientClass = 'bg-gradient-to-b from-blue-200 to-neutral-900'; break;
+    case 'purple-200': gradientClass = 'bg-gradient-to-b from-purple-200 to-neutral-900'; break;
+    case 'red-200': gradientClass = 'bg-gradient-to-b from-red-200 to-neutral-900'; break;
+    case 'teal-200': gradientClass = 'bg-gradient-to-b from-teal-200 to-neutral-900'; break;
+    case 'indigo-200': gradientClass = 'bg-gradient-to-b from-indigo-200 to-neutral-900'; break;
+    case 'amber-200': gradientClass = 'bg-gradient-to-b from-amber-200 to-neutral-900'; break;
+    default: gradientClass = 'bg-gradient-to-b from-pink-200 to-neutral-900';
   }
 
   if (error) return <div className="text-red-500 text-center">{error}</div>;
-  if (!collectionDetail)
-    return <div className="text-center">Không tìm thấy tuyển tập</div>;
+  if (!collectionDetail) return <div className="text-center">Không tìm thấy tuyển tập</div>;
 
   const { collection, songs } = collectionDetail;
-  const baseUrl = "http://localhost:3000";
 
   return (
     <div className="min-h-screen text-white rounded-lg">
@@ -140,9 +129,7 @@ export const CollectionDetail: React.FC = () => {
                 </div>
               </div>
               <div className="h-auto text-start ml-1.5">
-                <h2 className="text-sm text-gray-300">
-                  Danh sách phát công khai
-                </h2>
+                <h2 className="text-sm text-gray-300">Danh sách phát công khai</h2>
                 <h1 className="text-8xl font-bold uppercase">
                   This Is {collection.artist_name}
                 </h1>
@@ -154,7 +141,9 @@ export const CollectionDetail: React.FC = () => {
           </div>
           <div className="py-2 px-7 flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <Play className="w-6 h-6 text-white" />
+              <button onClick={handlePlayCollection}>
+                <Play className="w-6 h-6 text-white" />
+              </button>
               <Download className="w-6 h-6 text-white" />
               <MoreHorizontal className="w-6 h-6 text-white" />
             </div>
@@ -179,9 +168,10 @@ export const CollectionDetail: React.FC = () => {
                 {songs.map((song, index) => (
                   <tr
                     key={song.song_id}
-                    className="hover:bg-zinc-800 rounded-lg"
+                    className="hover:bg-zinc-800 rounded-lg cursor-pointer"
                     onMouseEnter={() => setHoveredSongId(song.song_id)}
                     onMouseLeave={() => setHoveredSongId(null)}
+                    onClick={() => handleSongClick(song, index)}
                   >
                     <td className="py-2 px-4 text-gray-400">
                       {hoveredSongId === song.song_id ? (
@@ -191,32 +181,30 @@ export const CollectionDetail: React.FC = () => {
                       )}
                     </td>
                     <td className="py-2 px-4">
-                        <div className="flex items-center">
-                          <img
-                            src={`${baseUrl}${song.img}`}
-                            alt={song.title}
-                            className="w-12 h-12 object-cover mr-4 rounded"
-                          />
-                          <div className="flex flex-col">
-                            <span className="text-white">{song.title}</span>
-
-                            {song.feat_artists.length > 0 && (
-                              <span className="text-gray-400 text-sm block">
-                                feat. {song.feat_artists.join(", ")}
-                              </span>
-                            )}
-                          </div>
-                          
+                      <div className="flex items-center">
+                        <img
+                          src={song.img}
+                          alt={song.title}
+                          className="w-12 h-12 object-cover mr-4 rounded"
+                        />
+                        <div className="flex flex-col">
+                          <span className="text-white">{song.title}</span>
+                          {song.feat_artists.length > 0 && (
+                            <span className="text-gray-400 text-sm block">
+                              feat. {song.feat_artists.join(', ')}
+                            </span>
+                          )}
                         </div>
-                      </td>
-                      <td className="py-2 px-4 text-gray-400">
-                        {song.album_name || "-"}
-                      </td>
-                      <td className="py-2 px-4 text-gray-400">
-                        {formatDuration(song.duration)}
-                      </td>
-                    </tr>
-                  ))}
+                      </div>
+                    </td>
+                    <td className="py-2 px-4 text-gray-400">
+                      {song.album_name || '-'}
+                    </td>
+                    <td className="py-2 px-4 text-gray-400">
+                      {formatDuration(song.duration)}
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>

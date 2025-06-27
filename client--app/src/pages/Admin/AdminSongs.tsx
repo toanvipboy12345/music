@@ -90,6 +90,7 @@ const AdminSongs: React.FC = () => {
       });
       setSongs(response.data.songs || []);
       setTotal(response.data.total || 0);
+      console.log('Songs fetched:', response.data.songs);
     } catch (error: any) {
       toast.error('Không thể tải danh sách bài hát.', {
         description: 'Vui lòng thử lại sau.',
