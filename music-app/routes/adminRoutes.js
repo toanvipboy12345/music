@@ -23,6 +23,8 @@ router.delete('/songs/:id', isAdmin, songController.deleteSong);
 // Artist routes
 router.post('/artists', isAdmin, artistController.createArtist);
 router.get('/artists', isAdmin, artistController.getArtists);
+router.get('/artists/search', isAdmin, artistController.searchArtistsByName);
+
 //Album routes
 
 router.post('/albums', albumController.createAlbum);

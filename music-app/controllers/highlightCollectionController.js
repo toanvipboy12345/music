@@ -40,7 +40,7 @@ const getHighlightCollectionByArtist = async (req, res) => {
       return res.status(404).json({ status: 'error', message: 'Ca sĩ không tồn tại' });
     }
 
-    // Lấy 10 bài hát ngẫu nhiên của ca sĩ, bao gồm thông tin album
+    // Lấy 10 bài hát ngẫu nhiên của ca sĩ, bao gồm thông tin album và lượt nghe
     const songs = await Song.findAll({
       where: { artist_id },
       order: Sequelize.literal('RAND()'),
@@ -55,7 +55,8 @@ const getHighlightCollectionByArtist = async (req, res) => {
         'artist_id',
         'feat_artist_ids',
         'is_downloadable',
-        'created_at'
+        'created_at',
+        'listen_count' // Sửa từ play_count thành listen_count
       ],
       include: [
         {
@@ -70,7 +71,7 @@ const getHighlightCollectionByArtist = async (req, res) => {
     // Tạo base URL từ request
     const baseUrl = `${req.protocol}://${req.get('host')}`;
 
-    // Xử lý danh sách bài hát để thêm thông tin ca sĩ feat và artist_name
+    // Xử lý danh sách bài hát để thêm thông tin ca sĩ feat, artist_name và listen_count
     const songsWithFeats = await Promise.all(
       songs.map(async (song) => {
         let featArtists = [];
@@ -97,11 +98,12 @@ const getHighlightCollectionByArtist = async (req, res) => {
           audio_file_url: song.audio_file_url ? `${baseUrl}${song.audio_file_url}` : null,
           img: song.img ? `${baseUrl}${song.img}` : null,
           artist_id: song.artist_id,
-          artist_name: artist.stage_name, // Thêm tên ca sĩ chính
+          artist_name: artist.stage_name,
           feat_artists: featArtists,
           album_name: song.Album ? song.Album.title : null,
           is_downloadable: song.is_downloadable,
-          created_at: song.created_at
+          created_at: song.created_at,
+          listen_count: song.listen_count // Sửa từ play_count thành listen_count
         };
       })
     );
@@ -110,7 +112,7 @@ const getHighlightCollectionByArtist = async (req, res) => {
       artist_id: artist.artist_id,
       title: `This Is ${artist.stage_name}`,
       artist_name: artist.stage_name,
-      img: artist.profile_picture, 
+      img: artist.profile_picture,
       popularity: artist.popularity,
       created_at: artist.created_at
     };

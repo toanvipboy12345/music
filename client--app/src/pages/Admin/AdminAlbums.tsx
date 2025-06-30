@@ -274,7 +274,7 @@ const AdminAlbums: React.FC = () => {
             className="w-full"
           />
         </div>
-        <Button onClick={openCreateDialog}>Thêm album</Button>
+        <Button variant="link" onClick={openCreateDialog}>Thêm album</Button>
       </div>
 
       {/* Albums Table */}
@@ -348,7 +348,7 @@ const AdminAlbums: React.FC = () => {
                 <TableCell>{new Date(album.created_at).toLocaleDateString()}</TableCell>
                 <TableCell>
                   <div className="flex space-x-2">
-                    <Button variant="outline" size="sm" onClick={() => openEditDialog(album)}>
+                    <Button variant="link" size="sm" onClick={() => openEditDialog(album)}>
                       Sửa
                     </Button>
                     <Button variant="destructive" size="sm" onClick={() => openDeleteDialog(album)}>
@@ -364,20 +364,20 @@ const AdminAlbums: React.FC = () => {
 
       {/* Pagination */}
       <div className="flex justify-between mt-4">
-        <Button onClick={handlePrevPage} disabled={page === 1}>
+        <Button variant="link" onClick={handlePrevPage} disabled={page === 1}>
           Trang trước
         </Button>
         <span>
           Trang {page} / {totalPages}
         </span>
-        <Button onClick={handleNextPage} disabled={page === totalPages}>
+        <Button variant="link" onClick={handleNextPage} disabled={page === totalPages}>
           Trang sau
         </Button>
       </div>
 
       {/* Dialog for Create/Edit Album */}
       <Dialog open={isAlbumDialogOpen} onOpenChange={setIsAlbumDialogOpen}>
-        <DialogContent>
+        <DialogContent variant="white">
           <DialogHeader>
             <DialogTitle>{dialogMode === 'create' ? 'Thêm album' : 'Sửa album'}</DialogTitle>
             <DialogDescription>
@@ -499,10 +499,10 @@ const AdminAlbums: React.FC = () => {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAlbumDialogOpen(false)}>
+            <Button variant="destructive" onClick={() => setIsAlbumDialogOpen(false)}>
               Hủy
             </Button>
-            <Button onClick={handleSaveOrUpdateAlbum}>
+            <Button variant="link" onClick={handleSaveOrUpdateAlbum}>
               {dialogMode === 'create' ? 'Lưu' : 'Cập nhật'}
             </Button>
           </DialogFooter>
@@ -511,7 +511,7 @@ const AdminAlbums: React.FC = () => {
 
       {/* Dialog for Delete */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent>
+        <DialogContent variant="white">
           <DialogHeader>
             <DialogTitle>Xóa album</DialogTitle>
             <DialogDescription>
@@ -519,7 +519,7 @@ const AdminAlbums: React.FC = () => {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+            <Button variant="link" onClick={() => setIsDeleteDialogOpen(false)}>
               Hủy
             </Button>
             <Button variant="destructive" onClick={handleDeleteAlbum}>

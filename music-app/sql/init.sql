@@ -49,6 +49,7 @@ CREATE TABLE Songs (
     genre_id INT NOT NULL, -- Một thể loại
     album_id INT, -- Liên kết đến album, có thể NULL cho single
     is_downloadable BOOLEAN DEFAULT FALSE,
+    listen_count INT NOT NULL DEFAULT 0, -- Thêm trường listen_count
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (artist_id) REFERENCES Artists(artist_id),
     FOREIGN KEY (genre_id) REFERENCES Genres(genre_id),
@@ -57,5 +58,49 @@ CREATE TABLE Songs (
         feat_artist_ids IS NULL OR
         JSON_VALID(feat_artist_ids) AND
         JSON_CONTAINS(feat_artist_ids, CAST(artist_id AS JSON)) = 0
+    ),
+    CONSTRAINT check_listen_count CHECK (listen_count >= 0) -- Ràng buộc cho listen_count
+);
+-- Tạo bảng Playlists
+CREATE TABLE IF NOT EXISTS Playlists (
+  playlist_id INT AUTO_INCREMENT PRIMARY KEY,
+  title VARCHAR(100) NOT NULL,
+  user_id INT NOT NULL,
+  img VARCHAR(255),
+  description TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES Users(user_id)
+);
+
+-- Tạo bảng trung gian PlaylistSongs
+CREATE TABLE IF NOT EXISTS PlaylistSongs (
+  playlist_id INT,
+  song_id INT,
+  PRIMARY KEY (playlist_id, song_id),
+  FOREIGN KEY (playlist_id) REFERENCES Playlists(playlist_id),
+  FOREIGN KEY (song_id) REFERENCES Songs(song_id)
+);
+CREATE TABLE SongQueue (
+    queue_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    song_id INT NOT NULL,
+    position INT NOT NULL,
+    is_current BOOLEAN DEFAULT FALSE,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES Users(user_id),
+    FOREIGN KEY (song_id) REFERENCES Songs(song_id),
+    UNIQUE (user_id, position),
+    CONSTRAINT check_position CHECK (position > 0),
+    CONSTRAINT check_unique_current CHECK (
+        is_current = FALSE OR
+        (SELECT COUNT(*) FROM SongQueue sq WHERE sq.user_id = user_id AND sq.is_current = TRUE) <= 1
     )
+);
+CREATE TABLE SongQueueHistory (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    song_id INT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES Users(user_id),
+    FOREIGN KEY (song_id) REFERENCES Songs(song_id)
 );

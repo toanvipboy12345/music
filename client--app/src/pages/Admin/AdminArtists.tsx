@@ -129,7 +129,7 @@ const AdminArtists: React.FC = () => {
             className="w-full"
           />
         </div>
-        <Button onClick={openDialog}>Thêm ca sĩ</Button>
+        <Button variant="link" onClick={openDialog}>Thêm ca sĩ</Button>
       </div>
 
       {/* Artists Table */}
@@ -176,20 +176,20 @@ const AdminArtists: React.FC = () => {
 
       {/* Pagination */}
       <div className="flex justify-between mt-4">
-        <Button onClick={handlePrevPage} disabled={page === 1}>
+        <Button variant="link" onClick={handlePrevPage} disabled={page === 1}>
           Trang trước
         </Button>
         <span>
           Trang {page} / {totalPages}
         </span>
-        <Button onClick={handleNextPage} disabled={page === totalPages}>
+        <Button variant="link" onClick={handleNextPage} disabled={page === totalPages}>
           Trang sau
         </Button>
       </div>
 
       {/* Dialog for Create */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
+        <DialogContent variant="white">
           <DialogHeader>
             <DialogTitle>Thêm ca sĩ</DialogTitle>
           </DialogHeader>
@@ -205,10 +205,10 @@ const AdminArtists: React.FC = () => {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+            <Button variant="destructive" onClick={() => setIsDialogOpen(false)}>
               Hủy
             </Button>
-            <Button onClick={handleSaveArtist}>Lưu</Button>
+            <Button variant="link" onClick={handleSaveArtist}>Lưu</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

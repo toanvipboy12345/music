@@ -32,6 +32,23 @@ import { Toaster, toast } from 'sonner';
 import { X } from 'lucide-react';
 import api from '../../services/api';
 
+// Custom useDebounce hook
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
 interface Song {
   song_id: number;
   title: string;
@@ -49,7 +66,7 @@ interface Song {
 }
 
 interface Artist {
-  artist_id: number;
+  artist_id?: number; // Optional, vì API /admin/artists/search không trả artist_id
   stage_name: string;
   profile_picture: string | null;
 }
@@ -80,6 +97,16 @@ const AdminSongs: React.FC = () => {
   const [imgFile, setImgFile] = useState<File | null>(null);
   const [artists, setArtists] = useState<Artist[]>([]);
   const [genres, setGenres] = useState<Genre[]>([]);
+  const [mainArtistSearch, setMainArtistSearch] = useState('');
+  const [featArtistSearch, setFeatArtistSearch] = useState('');
+  const [mainArtistSuggestions, setMainArtistSuggestions] = useState<Artist[]>([]);
+  const [featArtistSuggestions, setFeatArtistSuggestions] = useState<Artist[]>([]);
+  const [showMainSuggestions, setShowMainSuggestions] = useState(false);
+  const [showFeatSuggestions, setShowFeatSuggestions] = useState(false);
+
+  // Debounce search terms
+  const debouncedMainArtistSearch = useDebounce(mainArtistSearch, 300);
+  const debouncedFeatArtistSearch = useDebounce(featArtistSearch, 300);
 
   // Fetch songs
   const fetchSongs = async (page: number, search: string) => {
@@ -102,7 +129,7 @@ const AdminSongs: React.FC = () => {
   const fetchArtistsAndGenres = async () => {
     try {
       const [artistsResponse, genresResponse] = await Promise.all([
-        api.get('/admin/artists'),
+        api.get('/admin/artists', { params: { page: 1, limit: 50 } }),
         api.get('/admin/genres'),
       ]);
       console.log('Artists:', artistsResponse.data);
@@ -117,12 +144,83 @@ const AdminSongs: React.FC = () => {
     }
   };
 
+  // Fetch artist suggestions
+  const fetchArtistSuggestions = async (searchTerm: string, type: 'main' | 'feat') => {
+    if (!searchTerm.trim()) {
+      type === 'main' ? setMainArtistSuggestions([]) : setFeatArtistSuggestions([]);
+      return;
+    }
+    try {
+      const response = await api.get('/admin/artists/search', {
+        params: { search: searchTerm, page: 1, limit: 10 },
+      });
+      const suggestions = response.data.artists || [];
+      type === 'main' ? setMainArtistSuggestions(suggestions) : setFeatArtistSuggestions(suggestions);
+    } catch (error: any) {
+      toast.error('Không thể tìm kiếm ca sĩ.', {
+        description: error.response?.data?.message || 'Vui lòng thử lại.',
+      });
+    }
+  };
+
+  // Fetch suggestions when debounced search terms change
+  useEffect(() => {
+    fetchArtistSuggestions(debouncedMainArtistSearch, 'main');
+  }, [debouncedMainArtistSearch]);
+
+  useEffect(() => {
+    fetchArtistSuggestions(debouncedFeatArtistSearch, 'feat');
+  }, [debouncedFeatArtistSearch]);
+
+  // Fetch songs and initial artists/genres
   useEffect(() => {
     fetchSongs(page, search);
     fetchArtistsAndGenres();
   }, [page, search]);
 
-  // Handle search
+  // Handle search input for artists
+  const handleMainArtistSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setMainArtistSearch(e.target.value);
+    setShowMainSuggestions(true);
+  };
+
+  const handleFeatArtistSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFeatArtistSearch(e.target.value);
+    setShowFeatSuggestions(true);
+  };
+
+  // Handle select artist
+  const handleSelectMainArtist = (artist: Artist) => {
+    if (!featArtists.includes(artist.stage_name)) {
+      setMainArtist(artist.stage_name);
+      setMainArtistSearch('');
+      setMainArtistSuggestions([]);
+      setShowMainSuggestions(false);
+    } else {
+      toast.error('Ca sĩ này đã được chọn làm ca sĩ hợp tác.');
+    }
+  };
+
+  const handleSelectFeatArtist = (artist: Artist) => {
+    if (artist.stage_name !== mainArtist && !featArtists.includes(artist.stage_name)) {
+      setFeatArtists([...featArtists, artist.stage_name]);
+      setFeatArtistSearch('');
+      setFeatArtistSuggestions([]);
+      setShowFeatSuggestions(false);
+    } else if (artist.stage_name === mainArtist) {
+      toast.error('Ca sĩ này đã được chọn làm ca sĩ chính.');
+    } else {
+      toast.error('Ca sĩ này đã được chọn.');
+    }
+  };
+
+  // Handle remove main artist
+  const handleRemoveMainArtist = () => {
+    setMainArtist('');
+    setMainArtistSearch('');
+  };
+
+  // Handle search for songs
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearch(e.target.value);
     setPage(1);
@@ -245,6 +343,8 @@ const AdminSongs: React.FC = () => {
     setIsDownloadable(song.is_downloadable);
     setAudioFile(null);
     setImgFile(null);
+    setMainArtistSearch(song.artists[0]?.stage_name || '');
+    setFeatArtistSearch('');
     setDialogMode('edit');
     setIsSongDialogOpen(true);
   };
@@ -267,6 +367,12 @@ const AdminSongs: React.FC = () => {
     setAudioFile(null);
     setImgFile(null);
     setSelectedSong(null);
+    setMainArtistSearch('');
+    setFeatArtistSearch('');
+    setMainArtistSuggestions([]);
+    setFeatArtistSuggestions([]);
+    setShowMainSuggestions(false);
+    setShowFeatSuggestions(false);
   };
 
   // Format duration
@@ -290,101 +396,104 @@ const AdminSongs: React.FC = () => {
             className="w-full"
           />
         </div>
-        <Button onClick={openCreateDialog}>Thêm bài hát</Button>
+        <Button variant="link" onClick={openCreateDialog}>Thêm bài hát</Button>
       </div>
 
       {/* Songs Table */}
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>ID</TableHead>
-            <TableHead>Tiêu đề</TableHead>
-            <TableHead>Hình ảnh</TableHead>
-            <TableHead>Ca sĩ</TableHead>
-            <TableHead>Thể loại</TableHead>
-            <TableHead>Thời lượng</TableHead>
-            <TableHead>Ngày phát hành</TableHead>
-            <TableHead>Tải xuống</TableHead>
-            <TableHead>Ngày tạo</TableHead>
-            <TableHead>Hành động</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {songs.length === 0 ? (
+      <div className="overflow-x-auto">
+        <Table className="table-auto">
+          <TableHeader>
             <TableRow>
-              <TableCell colSpan={10} className="text-center">
-                Không có bài hát nào được tìm thấy.
-              </TableCell>
+              <TableHead className="w-1/12 min-w-[60px] sm:w-1/12">ID</TableHead>
+              <TableHead className="w-3/12 min-w-[120px] sm:w-3/12">Tiêu đề</TableHead>
+              <TableHead className="w-2/12 min-w-[80px] sm:w-2/12">Hình ảnh</TableHead>
+              <TableHead className="w-3/12 min-w-[150px] sm:w-1/4 truncate">Ca sĩ</TableHead>
+              <TableHead className="w-1/12 min-w-[100px] sm:w-1/6">Thể loại</TableHead>
+              <TableHead className="w-1/12 min-w-[80px] sm:w-1/12">Thời lượng</TableHead>
+              <TableHead className="w-1/12 min-w-[80px] sm:w-1/12">Ngày phát hành</TableHead>
+              <TableHead className="w-1/12 min-w-[80px] sm:w-1/12">Tải xuống</TableHead>
+              <TableHead className="w-1/12 min-w-[80px] sm:w-1/12">Ngày tạo</TableHead>
+              <TableHead className="w-2/12 min-w-[120px] sm:w-1/6">Hành động</TableHead>
             </TableRow>
-          ) : (
-            songs.map((song) => (
-              <TableRow key={song.song_id}>
-                <TableCell>{song.song_id}</TableCell>
-                <TableCell>{song.title}</TableCell>
-                <TableCell>
-                  {song.img ? (
-                    <img
-                      src={song.img}
-                      alt={song.title}
-                      className="w-1/3 h-auto object-cover"
-                      onError={(e) => {
-                        e.currentTarget.src = '/placeholder.png';
-                      }}
-                    />
-                  ) : (
-                    <img
-                      src="/placeholder.png"
-                      alt="No image"
-                      className="w-12 h-12 object-cover rounded"
-                    />
-                  )}
-                </TableCell>
-                <TableCell
-                  title={song.artists.map((a) => a.stage_name).join(', ')}
-                >
-                  {song.artists.length > 3
-                    ? `${song.artists.slice(0, 3).map((a) => a.stage_name).join(', ')}...`
-                    : song.artists.map((a) => a.stage_name).join(', ')}
-                </TableCell>
-                <TableCell>{song.genre.name}</TableCell>
-                <TableCell>{formatDuration(song.duration)}</TableCell>
-                <TableCell>
-                  {song.release_date ? new Date(song.release_date).toLocaleDateString() : '-'}
-                </TableCell>
-                <TableCell>{song.is_downloadable ? 'Có' : 'Không'}</TableCell>
-                <TableCell>{new Date(song.created_at).toLocaleDateString()}</TableCell>
-                <TableCell>
-                  <div className="flex space-x-2">
-                    <Button variant="outline" size="sm" onClick={() => openEditDialog(song)}>
-                      Sửa
-                    </Button>
-                    <Button variant="destructive" size="sm" onClick={() => openDeleteDialog(song)}>
-                      Xóa
-                    </Button>
-                  </div>
+          </TableHeader>
+          <TableBody>
+            {songs.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={10} className="text-center">
+                  Không có bài hát nào được tìm thấy.
                 </TableCell>
               </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
+            ) : (
+              songs.map((song) => (
+                <TableRow key={song.song_id}>
+                  <TableCell className="w-1/12 min-w-[60px] sm:w-1/12 text-sm sm:text-base">{song.song_id}</TableCell>
+                  <TableCell className="w-3/12 min-w-[120px] sm:w-3/12 text-sm sm:text-base truncate">{song.title}</TableCell>
+                  <TableCell className="w-2/12 min-w-[80px] sm:w-2/12">
+                    {song.img ? (
+                      <img
+                        src={song.img}
+                        alt={song.title}
+                        className="w-20 h-20 sm:w-16 sm:h-16 object-cover rounded"
+                        onError={(e) => {
+                          e.currentTarget.src = '/placeholder.png';
+                        }}
+                      />
+                    ) : (
+                      <img
+                        src="/placeholder.png"
+                        alt="No image"
+                        className="w-20 h-20 sm:w-16 sm:h-16 object-cover rounded"
+                      />
+                    )}
+                  </TableCell>
+                  <TableCell
+                    className="w-3/12 min-w-[150px] sm:w-1/4 text-sm sm:text-base truncate"
+                    title={song.artists.map((a) => a.stage_name).join(', ')}
+                  >
+                    {song.artists.length > 3
+                      ? `${song.artists.slice(0, 3).map((a) => a.stage_name).join(', ')}...`
+                      : song.artists.map((a) => a.stage_name).join(', ')}
+                  </TableCell>
+                  <TableCell className="w-1/12 min-w-[100px] sm:w-1/6 text-sm sm:text-base">{song.genre.name}</TableCell>
+                  <TableCell className="w-1/12 min-w-[80px] sm:w-1/12 text-sm sm:text-base">{formatDuration(song.duration)}</TableCell>
+                  <TableCell className="w-1/12 min-w-[80px] sm:w-1/12 text-sm sm:text-base">
+                    {song.release_date ? new Date(song.release_date).toLocaleDateString() : '-'}
+                  </TableCell>
+                  <TableCell className="w-1/12 min-w-[80px] sm:w-1/12 text-sm sm:text-base">{song.is_downloadable ? 'Có' : 'Không'}</TableCell>
+                  <TableCell className="w-1/12 min-w-[80px] sm:w-1/12 text-sm sm:text-base">{new Date(song.created_at).toLocaleDateString()}</TableCell>
+                  <TableCell className="w-2/12 min-w-[120px] sm:w-1/6">
+                    <div className="flex space-x-2">
+                      <Button variant="outline" size="sm" onClick={() => openEditDialog(song)}>
+                        Sửa
+                      </Button>
+                      <Button variant="destructive" size="sm" onClick={() => openDeleteDialog(song)}>
+                        Xóa
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
 
       {/* Pagination */}
       <div className="flex justify-between mt-4">
-        <Button onClick={handlePrevPage} disabled={page === 1}>
+        <Button variant="link" onClick={handlePrevPage} disabled={page === 1}>
           Trang trước
         </Button>
         <span>
           Trang {page} / {totalPages}
         </span>
-        <Button onClick={handleNextPage} disabled={page === totalPages}>
+        <Button variant="link" onClick={handleNextPage} disabled={page === totalPages}>
           Trang sau
         </Button>
       </div>
 
       {/* Dialog for Create/Edit Song */}
       <Dialog open={isSongDialogOpen} onOpenChange={setIsSongDialogOpen}>
-        <DialogContent>
+        <DialogContent variant="white">
           <DialogHeader>
             <DialogTitle>{dialogMode === 'create' ? 'Thêm bài hát' : 'Sửa bài hát'}</DialogTitle>
             <DialogDescription>
@@ -424,61 +533,95 @@ const AdminSongs: React.FC = () => {
             </div>
             <div>
               <Label htmlFor="main_artist">Ca sĩ chính</Label>
-              <Select
-                onValueChange={(value) => {
-                  if (value && !featArtists.includes(value)) {
-                    setMainArtist(value);
-                  } else {
-                    toast.error('Ca sĩ này đã được chọn làm ca sĩ hợp tác.');
-                  }
-                }}
-                value={mainArtist}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Chọn ca sĩ chính" />
-                </SelectTrigger>
-                <SelectContent>
-                  {artists.length === 0 ? (
-                    <div className="px-2 py-1 text-sm text-gray-500">Không có ca sĩ</div>
-                  ) : (
-                    artists.map((artist) => (
-                      <SelectItem key={artist.artist_id} value={artist.stage_name}>
-                        {artist.stage_name}
-                      </SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
+              <Input
+                id="main_artist"
+                value={mainArtistSearch}
+                onChange={handleMainArtistSearch}
+                placeholder="Tìm kiếm ca sĩ chính..."
+                onFocus={() => setShowMainSuggestions(true)}
+              />
+              {showMainSuggestions && mainArtistSuggestions.length > 0 && (
+                <div className="mt-1 max-h-60 overflow-y-auto border rounded-md bg-white shadow-lg">
+                  {mainArtistSuggestions.map((artist) => (
+                    <div
+                      key={artist.stage_name}
+                      className="flex items-center p-2 hover:bg-gray-100 cursor-pointer"
+                      onClick={() => handleSelectMainArtist(artist)}
+                    >
+                      {artist.profile_picture ? (
+                        <img
+                          src={artist.profile_picture}
+                          alt={artist.stage_name}
+                          className="w-8 h-8 object-cover rounded mr-2"
+                          onError={(e) => {
+                            e.currentTarget.src = '/placeholder.png';
+                          }}
+                        />
+                      ) : (
+                        <img
+                          src="/placeholder.png"
+                          alt="No image"
+                          className="w-8 h-8 object-cover rounded mr-2"
+                        />
+                      )}
+                      <span>{artist.stage_name}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {mainArtist && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  <span className="inline-flex items-center bg-gray-200 rounded-full px-3 py-1 text-sm">
+                    {mainArtist}
+                    <button
+                      type="button"
+                      className="ml-2 text-red-500"
+                      onClick={handleRemoveMainArtist}
+                    >
+                      <X size={16} />
+                    </button>
+                  </span>
+                </div>
+              )}
             </div>
             <div>
               <Label htmlFor="feat_artists">Ca sĩ hợp tác (Feat)</Label>
-              <Select
-                onValueChange={(value) => {
-                  if (value && !featArtists.includes(value) && value !== mainArtist) {
-                    setFeatArtists([...featArtists, value]);
-                  } else if (value === mainArtist) {
-                    toast.error('Ca sĩ này đã được chọn làm ca sĩ chính.');
-                  } else if (featArtists.includes(value)) {
-                    toast.error('Ca sĩ này đã được chọn.');
-                  }
-                }}
-                value="" // Reset dropdown sau khi chọn
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Chọn ca sĩ hợp tác" />
-                </SelectTrigger>
-                <SelectContent>
-                  {artists.length === 0 ? (
-                    <div className="px-2 py-1 text-sm text-gray-500">Không có ca sĩ</div>
-                  ) : (
-                    artists.map((artist) => (
-                      <SelectItem key={artist.artist_id} value={artist.stage_name}>
-                        {artist.stage_name}
-                      </SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
+              <Input
+                id="feat_artists"
+                value={featArtistSearch}
+                onChange={handleFeatArtistSearch}
+                placeholder="Tìm kiếm ca sĩ hợp tác..."
+                onFocus={() => setShowFeatSuggestions(true)}
+              />
+              {showFeatSuggestions && featArtistSuggestions.length > 0 && (
+                <div className="mt-1 max-h-60 overflow-y-auto border rounded-md bg-white shadow-lg">
+                  {featArtistSuggestions.map((artist) => (
+                    <div
+                      key={artist.stage_name}
+                      className="flex items-center p-2 hover:bg-gray-100 cursor-pointer"
+                      onClick={() => handleSelectFeatArtist(artist)}
+                    >
+                      {artist.profile_picture ? (
+                        <img
+                          src={artist.profile_picture}
+                          alt={artist.stage_name}
+                          className="w-8 h-8 object-cover rounded mr-2"
+                          onError={(e) => {
+                            e.currentTarget.src = '/placeholder.png';
+                          }}
+                        />
+                      ) : (
+                        <img
+                          src="/placeholder.png"
+                          alt="No image"
+                          className="w-8 h-8 object-cover rounded mr-2"
+                        />
+                      )}
+                      <span>{artist.stage_name}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
               <div className="flex flex-wrap gap-2 mt-2">
                 {featArtists.map((name, index) => (
                   <span
@@ -548,7 +691,7 @@ const AdminSongs: React.FC = () => {
                     alt={selectedSong.title}
                     className="w-24 h-24 object-cover rounded mt-1"
                     onError={(e) => {
-                      e.currentTarget.src = '/placeholder.png'; // Placeholder nếu ảnh lỗi
+                      e.currentTarget.src = '/placeholder.png';
                     }}
                   />
                 </div>
@@ -564,10 +707,10 @@ const AdminSongs: React.FC = () => {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsSongDialogOpen(false)}>
+            <Button variant="destructive" onClick={() => setIsSongDialogOpen(false)}>
               Hủy
             </Button>
-            <Button onClick={handleSaveOrUpdateSong}>
+            <Button variant="link" onClick={handleSaveOrUpdateSong}>
               {dialogMode === 'create' ? 'Lưu' : 'Cập nhật'}
             </Button>
           </DialogFooter>
@@ -576,7 +719,7 @@ const AdminSongs: React.FC = () => {
 
       {/* Dialog for Delete */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent>
+        <DialogContent variant="white">
           <DialogHeader>
             <DialogTitle>Xóa bài hát</DialogTitle>
             <DialogDescription>
@@ -584,7 +727,7 @@ const AdminSongs: React.FC = () => {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+            <Button variant="link" onClick={() => setIsDeleteDialogOpen(false)}>
               Hủy
             </Button>
             <Button variant="destructive" onClick={handleDeleteSong}>

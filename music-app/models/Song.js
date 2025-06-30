@@ -39,7 +39,6 @@ const Song = sequelize.define('Song', {
   img: {
     type: DataTypes.STRING(255),
     allowNull: true,
-
   },
   artist_id: {
     type: DataTypes.INTEGER,
@@ -87,6 +86,12 @@ const Song = sequelize.define('Song', {
     type: DataTypes.BOOLEAN,
     allowNull: false,
     defaultValue: false
+  },
+  listen_count: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 0,
+
   },
   created_at: {
     type: DataTypes.DATE,

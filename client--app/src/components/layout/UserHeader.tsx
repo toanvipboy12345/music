@@ -12,13 +12,15 @@ import {
 } from '../ui/dropdown-menu';
 import logo from '../../assets/1725820319spotify-logo-black.png'; // Sử dụng logo đã import
 
-// Logo Spotify từ file cục bộ
+// Logo Spotify bọc trong Link
 const SpotifyLogo = () => (
-  <img
-    src={logo}
-    alt="Spotify Logo"
-    className="w-30 h-auto" // Sửa w-30 thành w-12 (đơn vị hợp lệ của Tailwind)
-  />
+  <Link to="/" className="hover:scale-105 transition-transform">
+    <img
+      src={logo}
+      alt="Spotify Logo"
+      className="w-30 h-auto" // Sửa w-30 thành w-12
+    />
+  </Link>
 );
 
 // Hàm tạo avatar từ tên
@@ -54,12 +56,12 @@ export const UserHeader: React.FC = () => {
 
         {/* Phần bên phải - 3 phần */}
         <div className="col-span-3 flex items-center justify-end space-x-4">
-          <Button variant="outline" className="text-black border-white hover:bg-white hover:text-black hover:scale-105 transition-transform">
+          <Button variant="outline">
             Khám phá Premium
           </Button>
           {!isAuthenticated ? (
             <Link to="/login">
-              <Button variant="outline" className="text-black border-white hover:bg-white hover:text-black">
+              <Button variant="outline">
                 Đăng nhập
               </Button>
             </Link>

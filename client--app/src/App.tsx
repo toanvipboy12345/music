@@ -7,8 +7,9 @@ import { Register } from './pages/Register';
 import { Home } from './pages/Home';
 import { Admin } from './pages/Admin';
 import { ProtectedRoute } from './components/ProtectedRoute';
-import { MainLayout } from './/components/layout/MainLayout';
+import { MainLayout } from './components/layout/MainLayout';
 import { CollectionDetail } from './pages/CollectionDetail';
+import { PlaylistDetail } from './pages/PlaylistDetail';
 
 const App: React.FC = () => {
   return (
@@ -19,6 +20,7 @@ const App: React.FC = () => {
             <Route path="/" element={<MainLayout />}>
               <Route index element={<Home />} />
               <Route path="/collection/:artist_id" element={<CollectionDetail />} />
+              <Route path="/playlists/:playlistId" element={<PlaylistDetail />} /> {/* Sửa user_Id thành playlistId */}
             </Route>
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />

@@ -112,4 +112,39 @@ exports.getArtists = async (req, res) => {
   }
 };
 
+exports.searchArtistsByName = async (req, res) => {
+  console.log('GET /artists/search called with query:', req.query);
+  try {
+    const { search = '', page = 1, limit = 10 } = req.query;
+
+    if (!search || typeof search !== 'string' || search.trim().length < 1) {
+      console.log('Validation failed: Invalid search query');
+      return res.status(400).json({ message: 'Từ khóa tìm kiếm không hợp lệ' });
+    }
+
+    const where = { stage_name: { [Op.like]: `%${search}%` } };
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+    const artists = await Artist.findAll({
+      attributes: ['stage_name', 'profile_picture'],
+      where,
+      limit: parseInt(limit),
+      offset,
+      order: [['stage_name', 'ASC']],
+    });
+    const total = await Artist.count({ where });
+    console.log('Artists found:', artists.length, 'Total:', total);
+
+    res.json({
+      message: 'Tìm kiếm ca sĩ thành công',
+      artists,
+      total,
+      page: parseInt(page),
+      limit: parseInt(limit),
+    });
+  } catch (error) {
+    console.error('Search artists error:', error.message, error.stack);
+    res.status(500).json({ message: 'Lỗi server', error: error.message });
+  }
+};
+
 module.exports = exports;

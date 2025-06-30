@@ -1,9 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Button } from '../../components/ui/button';
-import { Input } from '../../components/ui/input';
-import { Label } from '../../components/ui/label';
+import React, { useState, useEffect } from "react";
+import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
+import { Label } from "../../components/ui/label";
 import {
   Table,
   TableBody,
@@ -11,16 +10,16 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '../../components/ui/table';
+} from "../../components/ui/table";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from '../../components/ui/dialog';
-import { Toaster, toast } from 'sonner';
-import api from '../../services/api';
+} from "../../components/ui/dialog";
+import { Toaster, toast } from "sonner";
+import api from "../../services/api";
 
 interface Genre {
   genre_id: number;
@@ -33,26 +32,25 @@ const AdminGenres: React.FC = () => {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [currentGenre, setCurrentGenre] = useState<Genre | null>(null);
-  const [name, setName] = useState('');
-  const navigate = useNavigate();
+  const [name, setName] = useState("");
 
   // Fetch genres
   const fetchGenres = async (page: number, search: string) => {
     try {
-      const response = await api.get('/admin/genres', {
+      const response = await api.get("/admin/genres", {
         params: { page, limit, search },
       });
-      console.log('API response:', response.data);
+      console.log("API response:", response.data);
       setGenres(response.data.genres);
       setTotal(response.data.total);
     } catch (error: any) {
-      console.error('API error:', error.response?.data || error.message);
-      toast.error('Không thể tải danh sách thể loại.', {
-        description: 'Vui lòng thử lại sau.',
+      console.error("API error:", error.response?.data || error.message);
+      toast.error("Không thể tải danh sách thể loại.", {
+        description: "Vui lòng thử lại sau.",
       });
     }
   };
@@ -82,19 +80,19 @@ const AdminGenres: React.FC = () => {
       if (isEditMode && currentGenre) {
         // Update genre
         await api.put(`/admin/genres/${currentGenre.genre_id}`, { name });
-        toast.success('Cập nhật thể loại thành công.');
+        toast.success("Cập nhật thể loại thành công.");
       } else {
         // Create genre
-        await api.post('/admin/genres', { name });
-        toast.success('Tạo thể loại thành công.');
+        await api.post("/admin/genres", { name });
+        toast.success("Tạo thể loại thành công.");
       }
       setIsDialogOpen(false);
-      setName('');
+      setName("");
       setCurrentGenre(null);
       fetchGenres(page, search);
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Có lỗi xảy ra.', {
-        description: 'Vui lòng kiểm tra lại.',
+      toast.error(error.response?.data?.message || "Có lỗi xảy ra.", {
+        description: "Vui lòng kiểm tra lại.",
       });
     }
   };
@@ -103,11 +101,11 @@ const AdminGenres: React.FC = () => {
   const handleDeleteGenre = async (id: number) => {
     try {
       await api.delete(`/admin/genres/${id}`);
-      toast.success('Xóa thể loại thành công.');
+      toast.success("Xóa thể loại thành công.");
       fetchGenres(page, search);
     } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Có lỗi xảy ra.', {
-        description: 'Vui lòng thử lại sau.',
+      toast.error(error.response?.data?.message || "Có lỗi xảy ra.", {
+        description: "Vui lòng thử lại sau.",
       });
     }
   };
@@ -121,7 +119,7 @@ const AdminGenres: React.FC = () => {
     } else {
       setIsEditMode(false);
       setCurrentGenre(null);
-      setName('');
+      setName("");
     }
     setIsDialogOpen(true);
   };
@@ -140,7 +138,9 @@ const AdminGenres: React.FC = () => {
             className="w-full"
           />
         </div>
-        <Button onClick={() => openDialog()}>Thêm thể loại</Button>
+        <Button variant="link" onClick={() => openDialog()}>
+          Thêm thể loại
+        </Button>
       </div>
 
       {/* Genres Table */}
@@ -165,10 +165,12 @@ const AdminGenres: React.FC = () => {
               <TableRow key={genre.genre_id}>
                 <TableCell>{genre.genre_id}</TableCell>
                 <TableCell>{genre.name}</TableCell>
-                <TableCell>{new Date(genre.created_at).toLocaleDateString()}</TableCell>
+                <TableCell>
+                  {new Date(genre.created_at).toLocaleDateString()}
+                </TableCell>
                 <TableCell>
                   <Button
-                    variant="outline"
+                    variant="link"
                     className="mr-2"
                     onClick={() => openDialog(genre)}
                   >
@@ -189,22 +191,24 @@ const AdminGenres: React.FC = () => {
 
       {/* Pagination */}
       <div className="flex justify-between mt-4">
-        <Button onClick={handlePrevPage} disabled={page === 1}>
+        <Button variant="link" onClick={handlePrevPage} disabled={page === 1}>
           Trang trước
         </Button>
         <span>
           Trang {page} / {totalPages}
         </span>
-        <Button onClick={handleNextPage} disabled={page === totalPages}>
+        <Button variant="link" onClick={handleNextPage} disabled={page === totalPages}>
           Trang sau
         </Button>
       </div>
 
       {/* Dialog for Create/Edit */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
+        <DialogContent variant="white">
           <DialogHeader>
-            <DialogTitle>{isEditMode ? 'Sửa thể loại' : 'Thêm thể loại'}</DialogTitle>
+            <DialogTitle>
+              {isEditMode ? "Sửa thể loại" : "Thêm thể loại"}
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
@@ -218,10 +222,10 @@ const AdminGenres: React.FC = () => {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+            <Button  variant="destructive" onClick={() => setIsDialogOpen(false)}>
               Hủy
             </Button>
-            <Button onClick={handleSaveGenre}>Lưu</Button>
+            <Button variant="link" onClick={handleSaveGenre}>Lưu</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

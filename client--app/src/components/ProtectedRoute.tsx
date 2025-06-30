@@ -6,7 +6,6 @@ export const ProtectedRoute: React.FC<{ children: React.ReactNode; requiredRole?
   const { isAuthenticated, userRole, checkAuth } = useAuth();
 
   useEffect(() => {
-    console.log('ProtectedRoute: Gọi checkAuth khi vào route...');
     checkAuth();
   }, [checkAuth]);
 
