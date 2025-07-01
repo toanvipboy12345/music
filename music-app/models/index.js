@@ -49,8 +49,7 @@ const User = require('./User');
 const Album = require('./Album');
 const Playlist = require('./Playlist');
 const PlaylistSong = require('./PlaylistSong');
-const SongQueue = require('./SongQueue');
-const SongQueueHistory = require('./SongQueueHistory');
+const Queue = require('./Queue');
 
 // Định nghĩa các mối quan hệ
 Song.belongsTo(Artist, { foreignKey: 'artist_id', as: 'MainArtist' });
@@ -68,15 +67,10 @@ Song.belongsToMany(Playlist, { through: PlaylistSong, foreignKey: 'song_id', as:
 Playlist.belongsTo(User, { foreignKey: 'user_id', as: 'User' });
 User.hasMany(Playlist, { foreignKey: 'user_id', as: 'Playlists' });
 
-SongQueue.belongsTo(User, { foreignKey: 'user_id', as: 'User' });
-User.hasMany(SongQueue, { foreignKey: 'user_id', as: 'Queue' });
-SongQueue.belongsTo(Song, { foreignKey: 'song_id', as: 'Song' });
-Song.hasMany(SongQueue, { foreignKey: 'song_id', as: 'Queue' });
-
-SongQueueHistory.belongsTo(User, { foreignKey: 'user_id', as: 'User' });
-User.hasMany(SongQueueHistory, { foreignKey: 'user_id', as: 'QueueHistory' });
-SongQueueHistory.belongsTo(Song, { foreignKey: 'song_id', as: 'Song' });
-Song.hasMany(SongQueueHistory, { foreignKey: 'song_id', as: 'QueueHistory' });
+Queue.belongsTo(User, { foreignKey: 'user_id', as: 'User' });
+User.hasMany(Queue, { foreignKey: 'user_id', as: 'Queue' });
+Queue.belongsTo(Song, { foreignKey: 'song_id', as: 'Song' });
+Song.hasMany(Queue, { foreignKey: 'song_id', as: 'Queue' });
 
 module.exports = {
   sequelize,
@@ -87,6 +81,5 @@ module.exports = {
   Album,
   Playlist,
   PlaylistSong,
-  SongQueue,
-  SongQueueHistory
+  Queue
 };

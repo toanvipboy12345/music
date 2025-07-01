@@ -38,7 +38,7 @@ interface PlaylistDetail {
 
 export const PlaylistDetail: React.FC = () => {
   const { playlistId } = useParams<{ playlistId: string }>();
-  const { userId, token, isAuthenticated, checkAuth } = useAuth();
+  const { userId, token, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [playlistDetail, setPlaylistDetail] = useState<PlaylistDetail | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -46,57 +46,48 @@ export const PlaylistDetail: React.FC = () => {
   const [hoveredSongId, setHoveredSongId] = useState<number | null>(null);
   const { setCurrentSong, setIsExpanded, setArtistName, setPlaylist, setCurrentSongIndex } = useAudio();
 
-  useEffect(() => {
-    const verifyAuthAndFetch = async () => {
-      console.log('PlaylistDetail: Trạng thái xác thực:', { isAuthenticated, userId, token, playlistId });
-      await checkAuth(); // Chờ checkAuth hoàn tất
-      if (!isAuthenticated || !userId || !token) {
-        console.log('PlaylistDetail: Chưa đăng nhập, chuyển hướng đến /login');
-        setError('Vui lòng đăng nhập để xem playlist');
+useEffect(() => {
+  const fetchPlaylistDetail = async () => {
+    console.log('PlaylistDetail: Trạng thái xác thực:', { isAuthenticated, userId, token, playlistId });
+
+    if (!playlistId) {
+      console.log('PlaylistDetail: playlistId không hợp lệ');
+      setError('ID playlist không hợp lệ');
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await api.get(`/user/playlists/user/${userId}/${playlistId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      console.log('PlaylistDetail: Phản hồi từ API:', response.data);
+      const playlistData = {
+        ...response.data.playlist,
+        songs: response.data.playlist.songs.map((song: any) => ({
+          ...song,
+          img: song.img || ''
+        }))
+      };
+      setPlaylistDetail(playlistData);
+      setArtistName(playlistData.username);
+    } catch (err: any) {
+      console.error('PlaylistDetail: Lỗi khi lấy chi tiết playlist:', err.response?.data || err.message);
+      if (err.response?.status === 401) {
+        setError('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.');
         navigate('/login');
-        setLoading(false);
-        return;
+      } else if (err.response?.status === 404) {
+        setError('Không tìm thấy playlist');
+      } else {
+        setError('Không thể tải chi tiết playlist');
       }
-      if (!playlistId) {
-        console.log('PlaylistDetail: playlistId không hợp lệ');
-        setError('ID playlist không hợp lệ');
-        setLoading(false);
-        return;
-      }
-
-      setLoading(true);
-      try {
-        const response = await api.get(`/user/playlists/user/${userId}/${playlistId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        console.log('API response:', response.data);
-        const playlistData = {
-          ...response.data.playlist,
-          songs: response.data.playlist.songs.map((song: any) => ({
-            ...song,
-            img: song.img || ''
-          }))
-        };
-        setPlaylistDetail(playlistData);
-        setArtistName(playlistData.username);
-      } catch (err: any) {
-        console.error('Lỗi khi lấy chi tiết playlist:', err);
-        if (err.response?.status === 401) {
-          console.log('PlaylistDetail: Token không hợp lệ, chuyển hướng đến /login');
-          setError('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.');
-          navigate('/login');
-        } else if (err.response?.status === 404) {
-          setError('Không tìm thấy playlist');
-        } else {
-          setError('Không thể tải chi tiết playlist');
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    verifyAuthAndFetch();
-  }, [playlistId, userId, token, isAuthenticated, checkAuth, setArtistName, navigate]);
+    } finally {
+      setLoading(false);
+    }
+  };
+  fetchPlaylistDetail();
+}, [playlistId, userId, token, isAuthenticated, setArtistName, navigate]);
 
   const formatDuration = (seconds: number): string => {
     const minutes = Math.floor(seconds / 60);

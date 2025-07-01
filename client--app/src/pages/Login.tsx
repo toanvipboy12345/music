@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -43,10 +44,8 @@ export const Login: React.FC = () => {
       await login(credentials, (role) => {
         console.log('Login callback triggered, role:', role);
         if (role === 'admin') {
-          console.log('Chuyển hướng đến /admin vì vai trò là admin');
           navigate('/admin');
         } else {
-          console.log('Chuyển hướng đến / vì vai trò là user');
           navigate('/');
         }
       });

@@ -80,27 +80,23 @@ CREATE TABLE IF NOT EXISTS PlaylistSongs (
   FOREIGN KEY (playlist_id) REFERENCES Playlists(playlist_id),
   FOREIGN KEY (song_id) REFERENCES Songs(song_id)
 );
-CREATE TABLE SongQueue (
+CREATE TABLE Queue (
     queue_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
     song_id INT NOT NULL,
     position INT NOT NULL,
-    is_current BOOLEAN DEFAULT FALSE,
+    is_current BOOLEAN NOT NULL DEFAULT FALSE,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES Users(user_id),
-    FOREIGN KEY (song_id) REFERENCES Songs(song_id),
+    title VARCHAR(100) NOT NULL,
+    duration INT NOT NULL,
+    audio_file_url VARCHAR(255) NOT NULL,
+    img VARCHAR(255),
+    artist_id INT NOT NULL,
+    artist_name VARCHAR(100) NOT NULL,
+    feat_artists JSON,
+    album_name VARCHAR(100),
+    FOREIGN KEY (user_id) REFERENCES Users(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (song_id) REFERENCES Songs(song_id) ON DELETE CASCADE,
     UNIQUE (user_id, position),
-    CONSTRAINT check_position CHECK (position > 0),
-    CONSTRAINT check_unique_current CHECK (
-        is_current = FALSE OR
-        (SELECT COUNT(*) FROM SongQueue sq WHERE sq.user_id = user_id AND sq.is_current = TRUE) <= 1
-    )
-);
-CREATE TABLE SongQueueHistory (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    song_id INT NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES Users(user_id),
-    FOREIGN KEY (song_id) REFERENCES Songs(song_id)
+    CONSTRAINT check_position CHECK (position > 0)
 );

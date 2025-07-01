@@ -20,7 +20,11 @@ const App: React.FC = () => {
             <Route path="/" element={<MainLayout />}>
               <Route index element={<Home />} />
               <Route path="/collection/:artist_id" element={<CollectionDetail />} />
-              <Route path="/playlists/:playlistId" element={<PlaylistDetail />} /> {/* Sửa user_Id thành playlistId */}
+              <Route path="/playlists/:playlistId" element={
+                <ProtectedRoute>
+                  <PlaylistDetail />
+                </ProtectedRoute>
+              } />
             </Route>
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />

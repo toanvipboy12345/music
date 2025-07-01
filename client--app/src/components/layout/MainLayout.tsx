@@ -1,84 +1,44 @@
-// import React from 'react';
-// import { Outlet } from 'react-router-dom';
-// import { UserHeader } from './UserHeader';
-// import { UserNavigation } from './UserNavigation';
-// import AudioPlayer from '../AudioPlayer';
-// import { useAudio } from '../../context/AudioContext';
-
-// export const MainLayout: React.FC = () => {
-//   const { currentSong, isExpanded, setIsExpanded, setCurrentSong } = useAudio();
-
-//   return (
-//     <div className="flex flex-col min-h-screen relative">
-//       {/* Hàng 1: Header */}
-//       <div className="w-full">
-//         <UserHeader />
-//       </div>
-
-//       {/* Hàng 2: Sidebar và Content */}
-//       <div className="flex flex-1 p-2 bg-black gap-2">
-//         {/* Sidebar Navigation - 2 phần */}
-//         <div className="w-2/10">
-//           <UserNavigation />
-//         </div>
-
-//         {/* Main Content - 8 phần */}
-//         <div className="w-8/10 bg-neutral-900 rounded-lg">
-//           <main>
-//             <Outlet />
-//           </main>
-//         </div>
-//       </div>
-
-//       {/* Audio Player - Absolute ở dưới cùng */}
-//       <div className="absolute bottom-0 left-0 right-0">
-//         <AudioPlayer
-//           song={currentSong}
-//           onClose={() => setCurrentSong(null)}
-//           isExpanded={isExpanded}
-//           setIsExpanded={setIsExpanded}
-//         />
-//       </div>
-//     </div>
-//   );
-// };
-import React from 'react';
-import { Outlet } from 'react-router-dom';
-import { UserHeader } from './UserHeader';
-import { UserNavigation } from './UserNavigation';
-import AudioPlayer from '../AudioPlayer';
-import { useAudio } from '../../context/AudioContext';
+import React from "react";
+import { Outlet } from "react-router-dom";
+import { UserHeader } from "./UserHeader";
+import { UserNavigation } from "./UserNavigation";
+import AudioPlayer from "../AudioPlayer";
+import QueueNav from "./QueueNav";
+import { useAudio } from "../../context/AudioContext";
 
 export const MainLayout: React.FC = () => {
   const audioContext = useAudio();
-  const { currentSong, isExpanded, setIsExpanded, setCurrentSong } = audioContext;
+  const { currentSong, isExpanded, setIsExpanded, setCurrentSong, isQueueNavOpen } = audioContext;
 
-  // Debug context
-  console.log('AudioContext in MainLayout:', audioContext);
+  console.log("AudioContext in MainLayout:", audioContext);
 
   return (
-    <div className="flex flex-col min-h-screen relative">
+    <div className="flex flex-col min-h-screen relative w-full">
       {/* Hàng 1: Header */}
-      <div className="w-full">
+      <div className="w-full h-16">
         <UserHeader />
       </div>
 
-      {/* Hàng 2: Sidebar và Content */}
-      <div className="flex flex-1 p-2 bg-black gap-2">
-        {/* Sidebar Navigation - 2 phần */}
-        <div className="w-2/10">
+      {/* Hàng 2: Sidebar, Content, và QueueNav */}
+      <div className="flex flex-1 p-2 bg-black gap-2 overflow-hidden w-full">
+        <div className="w-[18%] min-w-[100px]">
           <UserNavigation />
         </div>
-
-        {/* Main Content - 8 phần */}
-        <div className="w-8/10 bg-neutral-900 rounded-lg">
-          <main>
+        <div className="flex-1 bg-neutral-900 rounded-lg overflow-hidden transition-all duration-300">
+          <main className="h-full "> {/* Đảm bảo main chiếm toàn bộ chiều cao */}
             <Outlet />
           </main>
         </div>
+        <div
+          className={`w-[15%] min-w-[150px] ${
+            isQueueNavOpen ? "opacity-100" : "hidden"
+          } transition-all duration-300`}
+        >
+          <QueueNav />
+        </div>
       </div>
 
-      {/* Audio Player - Absolute ở dưới cùng */}
+      {/* Audio Player */}
       {currentSong && (
         <div className="absolute bottom-0 left-0 right-0">
           <AudioPlayer

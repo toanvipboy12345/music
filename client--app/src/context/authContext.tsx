@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import api from '../services/api';
 import type { LoginCredentials, RegisterCredentials, AuthResponse } from '../types/auth';
@@ -26,16 +27,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const savedToken = localStorage.getItem('token');
     const savedRole = localStorage.getItem('role') as 'user' | 'admin' | null;
     const savedUserId = localStorage.getItem('userId') ? parseInt(localStorage.getItem('userId') || '0') : null;
-    console.log('Khôi phục trạng thái từ localStorage:', { savedToken, savedRole, savedUserId });
+    const savedRefreshToken = localStorage.getItem('refreshToken');
+    console.log('Khôi phục trạng thái từ localStorage:', { savedToken, savedRole, savedUserId, savedRefreshToken });
     if (savedToken && savedRole && savedUserId) {
       setIsAuthenticated(true);
       setUserRole(savedRole);
       setUserId(savedUserId);
       setToken(savedToken);
       api.defaults.headers.Authorization = `Bearer ${savedToken}`;
-      console.log('Set token vào header:', api
-
-.defaults.headers.Authorization);
       checkAuth();
     }
   }, []);
@@ -43,42 +42,76 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // Kiểm tra trạng thái đăng nhập
   const checkAuth = async () => {
     try {
-      console.log('Gọi checkAuth...');
       const currentToken = localStorage.getItem('token');
-      console.log('Token hiện tại:', currentToken);
+      const refreshToken = localStorage.getItem('refreshToken');
+      console.log('checkAuth: Token từ localStorage:', currentToken, 'Refresh token:', refreshToken);
       if (!currentToken) {
-        console.log('Không có token, không gọi API /auth/check');
+        console.log('checkAuth: Không có token, đặt trạng thái về mặc định');
         setIsAuthenticated(false);
         setUserRole(null);
         setUserId(null);
         setToken(null);
+        delete api.defaults.headers.Authorization;
+        localStorage.removeItem('token');
+        localStorage.removeItem('role');
+        localStorage.removeItem('userId');
+        localStorage.removeItem('refreshToken');
         return;
       }
 
       api.defaults.headers.Authorization = `Bearer ${currentToken}`;
-      console.log('Header Authorization trước khi gọi /auth/check:', api.defaults.headers.Authorization);
+      console.log('checkAuth: Gửi yêu cầu tới /auth/check với header:', api.defaults.headers.Authorization);
       const response = await api.get('/auth/check');
-      console.log('Phản hồi từ /auth/check:', response.data);
+      console.log('checkAuth: Phản hồi từ /auth/check:', response.data);
       if (response.data.message === 'Đã đăng nhập' && response.data.user && response.data.user.id) {
         setIsAuthenticated(true);
         setUserRole(response.data.user.role as 'user' | 'admin');
         setUserId(response.data.user.id as number);
         setToken(currentToken);
         localStorage.setItem('userId', response.data.user.id.toString());
-        console.log('Xác thực thành công:', { isAuthenticated: true, userRole: response.data.user.role, userId: response.data.user.id });
       } else {
-        console.log('Xác thực thất bại, set trạng thái về false');
-        setIsAuthenticated(false);
-        setUserRole(null);
-        setUserId(null);
-        setToken(null);
+        throw new Error('Invalid response from /auth/check');
       }
-    } catch (error) {
-      console.error('Lỗi khi gọi checkAuth:', error.response?.data || error.message);
+    } catch (error: any) {
+      console.error('checkAuth: Lỗi khi gọi /auth/check:', error.response?.data || error.message);
+      // Thử làm mới token nếu có refresh token
+      const refreshToken = localStorage.getItem('refreshToken');
+      if (error.response?.status === 401 && refreshToken) {
+        console.log('checkAuth: Token không hợp lệ, thử làm mới token');
+        try {
+          const refreshResponse = await api.post('/auth/refresh', { refreshToken });
+          console.log('checkAuth: Phản hồi từ /auth/refresh:', refreshResponse.data);
+          const newToken = refreshResponse.data.token;
+          const newUserId = refreshResponse.data.user?.id;
+          const newRole = refreshResponse.data.role;
+          if (newToken && newUserId && newRole) {
+            localStorage.setItem('token', newToken);
+            localStorage.setItem('userId', newUserId.toString());
+            localStorage.setItem('role', newRole);
+            setToken(newToken);
+            setUserId(newUserId);
+            setUserRole(newRole as 'user' | 'admin');
+            setIsAuthenticated(true);
+            api.defaults.headers.Authorization = `Bearer ${newToken}`;
+            console.log('checkAuth: Làm mới token thành công:', { newToken, newUserId, newRole });
+            return; // Thoát sau khi làm mới thành công
+          } else {
+            throw new Error('Invalid refresh response');
+          }
+        } catch (refreshError: any) {
+          console.error('checkAuth: Lỗi khi làm mới token:', refreshError.response?.data || refreshError.message);
+        }
+      }
+      // Nếu làm mới token thất bại hoặc không có refresh token, xóa trạng thái
       setIsAuthenticated(false);
       setUserRole(null);
       setUserId(null);
       setToken(null);
+      delete api.defaults.headers.Authorization;
+      localStorage.removeItem('token');
+      localStorage.removeItem('role');
+      localStorage.removeItem('userId');
+      localStorage.removeItem('refreshToken');
     }
   };
 
@@ -91,7 +124,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (response.data.message !== 'Đăng ký thành công') {
         throw new Error(response.data.message);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Lỗi khi đăng ký:', error.response?.data || error.message);
       throw error.response?.data || { message: 'Lỗi server' };
     }
@@ -111,18 +144,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         localStorage.setItem('token', response.data.token);
         localStorage.setItem('role', response.data.role);
         localStorage.setItem('userId', response.data.user.id.toString());
+        if (response.data.refreshToken) {
+          localStorage.setItem('refreshToken', response.data.refreshToken);
+        }
         api.defaults.headers.Authorization = `Bearer ${response.data.token}`;
-        console.log('Đăng nhập thành công:', { isAuthenticated: true, userRole: response.data.role, userId: response.data.user.id, token: response.data.token });
+        console.log('Đăng nhập thành công:', { isAuthenticated: true, userRole: response.data.role, userId: response.data.user.id, token: response.data.token, refreshToken: response.data.refreshToken });
         await checkAuth();
 
-        // Gọi callback onSuccess nếu được cung cấp, truyền role từ phản hồi
         if (onSuccess) {
           onSuccess(response.data.role as 'user' | 'admin');
         }
       } else {
         throw new Error(response.data.message || 'Đăng nhập thất bại');
       }
-    } catch (error) {
+    } catch (error:any) {
       console.error('Lỗi khi đăng nhập:', error.response?.data || error.message);
       throw error.response?.data || { message: 'Lỗi server' };
     }
@@ -139,6 +174,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     localStorage.removeItem('token');
     localStorage.removeItem('role');
     localStorage.removeItem('userId');
+    localStorage.removeItem('refreshToken');
     console.log('Đã đăng xuất, trạng thái hiện tại:', { isAuthenticated: false, userRole: null, userId: null, token: null });
   };
 

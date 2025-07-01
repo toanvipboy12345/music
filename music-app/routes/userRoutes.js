@@ -26,11 +26,12 @@ router.post('/playlists/:playlistId/songs', isUser, playlistController.addSongTo
 router.delete('/playlists/:playlistId', isUser, playlistController.deletePlaylist);
 
 // Queue routes for authenticated users
+// Queue routes for authenticated users
 router.get('/queue', isUser, queueController.getUserQueue);
 router.post('/queue/add', isUser, queueController.addSongToQueue);
 router.delete('/queue/remove/:song_id', isUser, queueController.removeSongFromQueue);
 router.put('/queue/update-current', isUser, queueController.updateCurrentSong);
 router.post('/queue/next', isUser, queueController.nextSong);
-router.post('/queue/previous', isUser, queueController.previousSong);
-
+router.post('/queue/prev', isUser, queueController.prevSong);
+router.delete('/queue/clear', isUser, queueController.clearQueue);
 module.exports = router;

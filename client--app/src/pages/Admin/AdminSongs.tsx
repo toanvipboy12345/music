@@ -145,23 +145,47 @@ const AdminSongs: React.FC = () => {
   };
 
   // Fetch artist suggestions
-  const fetchArtistSuggestions = async (searchTerm: string, type: 'main' | 'feat') => {
-    if (!searchTerm.trim()) {
-      type === 'main' ? setMainArtistSuggestions([]) : setFeatArtistSuggestions([]);
-      return;
+// Fetch artist suggestions
+const fetchArtistSuggestions = async (searchTerm: string, type: 'main' | 'feat') => {
+  if (!searchTerm.trim()) {
+    if (type === 'main') {
+      setMainArtistSuggestions([]);
+    } else {
+      setFeatArtistSuggestions([]);
     }
-    try {
-      const response = await api.get('/admin/artists/search', {
-        params: { search: searchTerm, page: 1, limit: 10 },
-      });
-      const suggestions = response.data.artists || [];
-      type === 'main' ? setMainArtistSuggestions(suggestions) : setFeatArtistSuggestions(suggestions);
-    } catch (error: any) {
-      toast.error('Không thể tìm kiếm ca sĩ.', {
-        description: error.response?.data?.message || 'Vui lòng thử lại.',
-      });
+    return;
+  }
+  try {
+    const response = await api.get('/admin/artists/search', {
+      params: { search: searchTerm, page: 1, limit: 10 },
+    });
+    const suggestions = response.data.artists || [];
+    if (type === 'main') {
+      setMainArtistSuggestions(suggestions);
+    } else {
+      setFeatArtistSuggestions(suggestions);
     }
-  };
+  } catch (error: unknown) {
+    let errorMessage = 'Không thể tìm kiếm ca sĩ.';
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+    if (
+      error &&
+      typeof error === 'object' &&
+      'response' in error &&
+      error.response &&
+      typeof error.response === 'object' &&
+      'data' in error.response
+    ) {
+      errorMessage = typeof error.response.data === 'string' ? error.response.data : errorMessage;
+    }
+    toast.error(errorMessage, {
+      description: errorMessage,
+      style: { background: 'black', color: 'white' },
+    });
+  }
+};
 
   // Fetch suggestions when debounced search terms change
   useEffect(() => {
