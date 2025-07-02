@@ -165,7 +165,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Đăng xuất
   const logout = () => {
-    console.log('Gọi logout...');
     setIsAuthenticated(false);
     setUserRole(null);
     setUserId(null);

@@ -27,6 +27,11 @@ interface Song {
   listen_count: number;
 }
 
+interface QueueItem extends Song {
+  position: number;
+  is_current: boolean;
+}
+
 interface Playlist {
   playlist_id: number;
   title: string;
@@ -56,7 +61,7 @@ export const CollectionDetail: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [selectedSongId, setSelectedSongId] = useState<number | null>(null);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
-  const { setPlaylist, setCurrentSongIndex, addToQueue } = useAudio();
+  const { setPlaylist, setCurrentSongIndex, addToQueue, playContent } = useAudio();
   const { isAuthenticated, userId, token } = useAuth();
 
   useEffect(() => {
@@ -160,6 +165,36 @@ export const CollectionDetail: React.FC = () => {
     }
   };
 
+  const handlePlayContent = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!isAuthenticated || !userId) {
+      toast.error('Vui lòng đăng nhập để phát danh sách', {
+        action: {
+          label: 'Đăng nhập',
+          onClick: () => navigate('/login'),
+        },
+        style: { background: 'black', color: 'white' },
+      });
+      return;
+    }
+    if (!collectionDetail?.songs || collectionDetail.songs.length === 0) {
+      toast.error('Danh sách bài hát trống', {
+        style: { background: 'black', color: 'white' },
+      });
+      return;
+    }
+    try {
+      const songIds = collectionDetail.songs.map(song => song.song_id);
+      console.log('Handling play content with song_ids:', songIds);
+      await playContent(songIds);
+    } catch (error: any) {
+      console.error('Error playing content:', error);
+      toast.error(error.response?.data?.message || 'Không thể phát danh sách', {
+        style: { background: 'black', color: 'white' },
+      });
+    }
+  };
+
   const formatDuration = (seconds: number): string => {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
@@ -181,7 +216,13 @@ export const CollectionDetail: React.FC = () => {
     try {
       console.log('Handling song click:', { song_id: song.song_id, title: song.title });
       await addToQueue(song, true); // Phát ngay bài hát
-      setPlaylist(collectionDetail?.songs || []);
+      // Chuyển đổi songs thành QueueItem[] cho setPlaylist
+      const queueItems: QueueItem[] = (collectionDetail?.songs || []).map((s, i) => ({
+        ...s,
+        position: i + 1, // Gán position dựa trên thứ tự trong danh sách
+        is_current: i === index, // Chỉ bài hát được chọn là is_current
+      }));
+      setPlaylist(queueItems);
       setCurrentSongIndex(index); // Sử dụng index thực tế của bài hát
     } catch (error: any) {
       console.error('Error playing song:', error);
@@ -250,8 +291,11 @@ export const CollectionDetail: React.FC = () => {
                   </p>
                 </div>
               </div>
-              <div className="py-2 px-7 flex items-center justify-between">
+              <div className="py-2 px-7 flex items-center justify-between mb-4">
                 <div className="flex items-center space-x-4">
+                  <button onClick={handlePlayContent}>
+                    <Play className="w-6 h-6 text-white" />
+                  </button>
                   <Download className="w-6 h-6 text-white" />
                   <MoreHorizontal className="w-6 h-6 text-white" />
                 </div>

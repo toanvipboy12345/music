@@ -4,14 +4,13 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/authContext";
 import { Button } from "@/components/ui/button";
-import { Plus, Music, Trash2 } from "react-feather";
+import { Plus, Music } from "react-feather";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -42,8 +41,6 @@ export const UserNavigation: React.FC = () => {
   const navigate = useNavigate();
   const [playlists, setPlaylists] = useState<PlaylistSummary[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [selectedPlaylist, setSelectedPlaylist] = useState<{ id: number; title: string } | null>(null);
   const [newPlaylist, setNewPlaylist] = useState<NewPlaylistForm>({
     title: "",
     description: "",
@@ -144,60 +141,6 @@ export const UserNavigation: React.FC = () => {
     }
   };
 
-  const handleDeletePlaylist = async () => {
-    if (!isAuthenticated) {
-      toast.error("Vui lòng đăng nhập để xóa playlist", {
-        style: { background: "black", color: "white" },
-      });
-      navigate("/login");
-      return;
-    }
-    if (!selectedPlaylist) return;
-
-    try {
-      setIsLoading(true);
-      await api.delete(`/user/playlists/${selectedPlaylist.id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setTimeout(() => {
-        setIsDeleteModalOpen(false);
-        setSelectedPlaylist(null);
-        fetchPlaylists();
-        setIsLoading(false);
-        toast.success(`Xóa playlist "${selectedPlaylist.title}" thành công`, {
-          style: { background: "black", color: "white" },
-        });
-      }, 1000);
-    } catch (error: any) {
-      console.error("Lỗi khi xóa playlist:", error);
-      setTimeout(() => {
-        setIsLoading(false);
-        toast.error(error.response?.data?.message || "Lỗi khi xóa playlist", {
-          style: { background: "black", color: "white" },
-        });
-      }, 1000);
-    }
-  };
-
-  const handleOpenDeleteModal = (playlistId: number, playlistTitle: string) => {
-    if (!isAuthenticated) {
-      toast.error("Vui lòng đăng nhập để xóa playlist", {
-        style: { background: "black", color: "white" },
-      });
-      navigate("/login");
-      return;
-    }
-    if (!playlistId) {
-      console.error("Playlist ID is undefined:", { playlistId, playlistTitle });
-      toast.error("Không thể xóa: ID playlist không hợp lệ", {
-        style: { background: "black", color: "white" },
-      });
-      return;
-    }
-    setSelectedPlaylist({ id: playlistId, title: playlistTitle });
-    setIsDeleteModalOpen(true);
-  };
-
   const handleOpenCreateModal = () => {
     if (!isAuthenticated) {
       toast.error("Vui lòng đăng nhập để tạo playlist", {
@@ -236,7 +179,6 @@ export const UserNavigation: React.FC = () => {
             <DialogTrigger asChild>
               <Button
                 variant="outline"
-                
                 onClick={handleOpenCreateModal}
                 disabled={!isAuthenticated || isLoading}
               >
@@ -341,7 +283,7 @@ export const UserNavigation: React.FC = () => {
               {playlists.map((playlist) => (
                 <li key={playlist.playlist_id} className="flex items-center justify-between p-2 rounded-md hover:bg-neutral-800 transition-colors">
                   <Link
-                    to={`/playlists/${playlist.playlist_id}`} // Sử dụng playlist_id để khớp với route
+                    to={`/playlists/${playlist.playlist_id}`}
                     className="flex items-center gap-3 flex-1"
                   >
                     {playlist.img ? (
@@ -364,14 +306,6 @@ export const UserNavigation: React.FC = () => {
                       </p>
                     </div>
                   </Link>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleOpenDeleteModal(playlist.playlist_id, playlist.title)}
-                    disabled={isLoading}
-                  >
-                    <Trash2 className="h-6 w-6" />
-                  </Button>
                 </li>
               ))}
             </ul>
@@ -390,40 +324,6 @@ export const UserNavigation: React.FC = () => {
           </div>
         )}
       </nav>
-
-      <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
-        <DialogContent variant="dark" className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Xóa Playlist</DialogTitle>
-          </DialogHeader>
-          <div className="py-4">
-            <p>
-              Bạn có chắc muốn xóa playlist "
-              <span className="font-semibold">{selectedPlaylist?.title}</span>" không?
-            </p>
-            <p className="text-sm text-neutral-400 mt-2">
-              Hành động này không thể hoàn tác.
-            </p>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setIsDeleteModalOpen(false)}
-              disabled={isLoading}
-            >
-              Hủy
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleDeletePlaylist}
-              className="bg-red-600 hover:bg-red-700"
-              disabled={isLoading}
-            >
-              {isLoading ? "Đang xóa..." : "Xóa"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </>
   );
 };

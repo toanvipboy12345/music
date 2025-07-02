@@ -3,7 +3,11 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Skeleton from 'react-loading-skeleton';
 import 'react-loading-skeleton/dist/skeleton.css';
-import { Clock, Play, Download, MoreHorizontal, List } from 'react-feather';
+import { Clock, Play, Download, MoreHorizontal, List, Trash2 } from 'react-feather';
+import { Toaster, toast } from "sonner";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import api from '../services/api';
 import { useAudio } from '../context/AudioContext';
 import { useAuth } from '../context/authContext';
@@ -22,6 +26,11 @@ interface Song {
   is_downloadable: boolean;
   created_at: string;
   listen_count: number;
+}
+
+interface QueueItem extends Song {
+  position: number;
+  is_current: boolean;
 }
 
 interface PlaylistDetail {
@@ -44,50 +53,52 @@ export const PlaylistDetail: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [hoveredSongId, setHoveredSongId] = useState<number | null>(null);
-  const { setCurrentSong, setIsExpanded, setArtistName, setPlaylist, setCurrentSongIndex } = useAudio();
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const { addToQueue, playContent, setPlaylist, setCurrentSongIndex, setArtistName, setIsExpanded } = useAudio();
 
-useEffect(() => {
-  const fetchPlaylistDetail = async () => {
-    console.log('PlaylistDetail: Trạng thái xác thực:', { isAuthenticated, userId, token, playlistId });
+  useEffect(() => {
+    const fetchPlaylistDetail = async () => {
+      console.log('PlaylistDetail: Trạng thái xác thực:', { isAuthenticated, userId, token, playlistId });
 
-    if (!playlistId) {
-      console.log('PlaylistDetail: playlistId không hợp lệ');
-      setError('ID playlist không hợp lệ');
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const response = await api.get(`/user/playlists/user/${userId}/${playlistId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      console.log('PlaylistDetail: Phản hồi từ API:', response.data);
-      const playlistData = {
-        ...response.data.playlist,
-        songs: response.data.playlist.songs.map((song: any) => ({
-          ...song,
-          img: song.img || ''
-        }))
-      };
-      setPlaylistDetail(playlistData);
-      setArtistName(playlistData.username);
-    } catch (err: any) {
-      console.error('PlaylistDetail: Lỗi khi lấy chi tiết playlist:', err.response?.data || err.message);
-      if (err.response?.status === 401) {
-        setError('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.');
-        navigate('/login');
-      } else if (err.response?.status === 404) {
-        setError('Không tìm thấy playlist');
-      } else {
-        setError('Không thể tải chi tiết playlist');
+      if (!playlistId) {
+        console.log('PlaylistDetail: playlistId không hợp lệ');
+        setError('ID playlist không hợp lệ');
+        setLoading(false);
+        return;
       }
-    } finally {
-      setLoading(false);
-    }
-  };
-  fetchPlaylistDetail();
-}, [playlistId, userId, token, isAuthenticated, setArtistName, navigate]);
+
+      setLoading(true);
+      try {
+        const response = await api.get(`/user/playlists/user/${userId}/${playlistId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        console.log('PlaylistDetail: Phản hồi từ API:', response.data);
+        const playlistData = {
+          ...response.data.playlist,
+          songs: response.data.playlist.songs.map((song: any) => ({
+            ...song,
+            img: song.img || ''
+          }))
+        };
+        setPlaylistDetail(playlistData);
+        setArtistName(playlistData.username);
+      } catch (err: any) {
+        console.error('PlaylistDetail: Lỗi khi lấy chi tiết playlist:', err.response?.data || err.message);
+        if (err.response?.status === 401) {
+          setError('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.');
+          navigate('/login');
+        } else if (err.response?.status === 404) {
+          setError('Không tìm thấy playlist');
+        } else {
+          setError('Không thể tải chi tiết playlist');
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchPlaylistDetail();
+  }, [playlistId, userId, token, isAuthenticated, setArtistName, navigate]);
 
   const formatDuration = (seconds: number): string => {
     const minutes = Math.floor(seconds / 60);
@@ -95,19 +106,101 @@ useEffect(() => {
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
-  const handleSongClick = (song: Song, index: number) => {
-    setCurrentSong(song);
-    setPlaylist(playlistDetail?.songs || []);
-    setCurrentSongIndex(index);
-    setIsExpanded(false);
+  const handleSongClick = async (song: Song, index: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!isAuthenticated || !userId) {
+      toast.error('Vui lòng đăng nhập để phát bài hát', {
+        action: {
+          label: 'Đăng nhập',
+          onClick: () => navigate('/login'),
+        },
+        style: { background: 'black', color: 'white' },
+      });
+      return;
+    }
+    try {
+      console.log('Handling song click:', { song_id: song.song_id, title: song.title });
+      await addToQueue(song, true); // Phát ngay bài hát
+      // Chuyển đổi songs thành QueueItem[] cho setPlaylist
+      const queueItems: QueueItem[] = (playlistDetail?.songs || []).map((s, i) => ({
+        ...s,
+        position: i + 1, // Gán position dựa trên thứ tự trong danh sách
+        is_current: i === index, // Chỉ bài hát được chọn là is_current
+      }));
+      setPlaylist(queueItems);
+      setCurrentSongIndex(index); // Sử dụng index thực tế của bài hát
+      setIsExpanded(false);
+    } catch (error: any) {
+      console.error('Error playing song:', error);
+      toast.error(error.response?.data?.message || 'Không thể phát bài hát', {
+        style: { background: 'black', color: 'white' },
+      });
+    }
   };
 
-  const handlePlayPlaylist = () => {
-    if (playlistDetail?.songs && playlistDetail.songs.length > 0) {
-      setCurrentSong(playlistDetail.songs[0]);
-      setPlaylist(playlistDetail.songs);
-      setCurrentSongIndex(0);
+  const handlePlayPlaylist = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!isAuthenticated || !userId) {
+      toast.error('Vui lòng đăng nhập để phát danh sách', {
+        action: {
+          label: 'Đăng nhập',
+          onClick: () => navigate('/login'),
+        },
+        style: { background: 'black', color: 'white' },
+      });
+      return;
+    }
+    if (!playlistDetail?.songs || playlistDetail.songs.length === 0) {
+      toast.error('Danh sách bài hát trống', {
+        style: { background: 'black', color: 'white' },
+      });
+      return;
+    }
+    try {
+      const songIds = playlistDetail.songs.map(song => song.song_id);
+      console.log('Handling play playlist with song_ids:', songIds);
+      await playContent(songIds);
       setIsExpanded(false);
+    } catch (error: any) {
+      console.error('Error playing playlist:', error);
+      toast.error(error.response?.data?.message || 'Không thể phát danh sách', {
+        style: { background: 'black', color: 'white' },
+      });
+    }
+  };
+
+  const handleDeletePlaylist = async () => {
+    if (!isAuthenticated || !userId || !playlistId) {
+      toast.error('Vui lòng đăng nhập để xóa playlist', {
+        action: {
+          label: 'Đăng nhập',
+          onClick: () => navigate('/login'),
+        },
+        style: { background: 'black', color: 'white' },
+      });
+      return;
+    }
+    try {
+      setIsLoading(true);
+      await api.delete(`/user/playlists/${playlistId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setTimeout(() => {
+        setIsDeleteModalOpen(false);
+        setIsLoading(false);
+        toast.success(`Xóa playlist "${playlistDetail?.title}" thành công`, {
+          style: { background: 'black', color: 'white' },
+        });
+        navigate('/'); // Điều hướng về trang chính sau khi xóa
+      }, 1000);
+    } catch (error: any) {
+      console.error('Lỗi khi xóa playlist:', error);
+      setTimeout(() => {
+        setIsLoading(false);
+        toast.error(error.response?.data?.message || 'Lỗi khi xóa playlist', {
+          style: { background: 'black', color: 'white' },
+        });
+      }, 1000);
     }
   };
 
@@ -118,6 +211,7 @@ useEffect(() => {
 
   return (
     <div className="min-h-screen text-white rounded-lg">
+      <Toaster richColors position="top-right" />
       {loading ? (
         <div className="space-y-4">
           <Skeleton height={200} className="w-full rounded-lg" />
@@ -139,7 +233,7 @@ useEffect(() => {
                       <img
                         src={img}
                         alt={title}
-                        className="w-52 object-contain rounded-sm"
+                        className="w-52 h-52 object-contain rounded-sm"
                       />
                     ) : (
                       <div className="w-52 h-52 bg-neutral-700 flex items-center justify-center rounded-sm">
@@ -161,7 +255,22 @@ useEffect(() => {
                     <Play className="w-6 h-6 text-white" />
                   </button>
                   <Download className="w-6 h-6 text-white" />
-                  <MoreHorizontal className="w-6 h-6 text-white" />
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button>
+                        <MoreHorizontal className="w-6 h-6 text-white" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="z-50 bg-neutral-800 text-white border-neutral-700">
+                      <DropdownMenuItem
+                        onClick={() => setIsDeleteModalOpen(true)}
+                        className="hover:bg-neutral-700 focus:bg-neutral-700"
+                      >
+                        <Trash2 className="w-5 h-5 mr-2" />
+                        Xóa playlist
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
                 <div className="flex items-center space-x-2">
                   <List className="w-6 h-6 text-white" />
@@ -190,11 +299,13 @@ useEffect(() => {
                     className="hover:bg-zinc-800 rounded-lg cursor-pointer"
                     onMouseEnter={() => setHoveredSongId(song.song_id)}
                     onMouseLeave={() => setHoveredSongId(null)}
-                    onClick={() => handleSongClick(song, index)}
+                    onClick={(e) => handleSongClick(song, index, e)}
                   >
                     <td className="py-2 px-4 text-gray-400">
                       {hoveredSongId === song.song_id ? (
-                        <Play className="w-5 h-5" />
+                        <button onClick={(e) => handleSongClick(song, index, e)}>
+                          <Play className="w-5 h-5" />
+                        </button>
                       ) : (
                         index + 1
                       )}
@@ -237,6 +348,33 @@ useEffect(() => {
               </tbody>
             </table>
           </div>
+          <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
+            <DialogContent variant="dark" className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Xóa Playlist</DialogTitle>
+                <DialogDescription>
+                  Bạn có chắc muốn xóa playlist "<span className="font-semibold">{playlistDetail?.title}</span>" không? Hành động này không thể hoàn tác.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => setIsDeleteModalOpen(false)}
+                  disabled={isLoading}
+                >
+                  Hủy
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleDeletePlaylist}
+                  className="bg-red-600 hover:bg-red-700"
+                  disabled={isLoading}
+                >
+                  {isLoading ? "Đang xóa..." : "Xóa"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       )}
     </div>

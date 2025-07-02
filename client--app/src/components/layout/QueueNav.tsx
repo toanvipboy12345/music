@@ -41,7 +41,6 @@ const QueueNav: React.FC = () => {
 
   const handleSelectSong = async (item: QueueItem) => {
     if (!isAuthenticated || !token) {
-      console.log('handleSelectSong: Not authenticated or no token');
       toast.error('Yêu cầu đăng nhập để phát bài hát', {
         style: { background: 'black', color: 'white' },
         action: {
