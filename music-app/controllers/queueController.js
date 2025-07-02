@@ -433,12 +433,100 @@ exports.clearQueue = async (req, res) => {
   const userId = req.user.user_id;
 
   try {
-    console.log('Clearing queue for userId:', userId);
     await Queue.destroy({ where: { user_id: userId } });
-    console.log('Successfully cleared queue');
     res.status(200).json({ success: true });
   } catch (error) {
-    console.error('Error clearing queue:', error);
     res.status(500).json({ message: 'Không thể làm trống danh sách chờ' });
+  }
+};
+exports.playContent = async (req, res) => {
+  const { song_ids } = req.body;
+  const userId = req.user.user_id;
+  const baseUrl = `${req.protocol}://${req.get('host')}`;
+
+  if (!song_ids || !Array.isArray(song_ids) || song_ids.length === 0) {
+    return res.status(400).json({ message: 'Yêu cầu danh sách song_ids hợp lệ' });
+  }
+
+  try {
+    console.log('Playing content for userId:', userId, 'with song_ids:', song_ids);
+
+    const transaction = await sequelize.transaction();
+
+    try {
+      // Bước 1: Xóa toàn bộ danh sách chờ hiện tại
+      await Queue.destroy({ where: { user_id: userId }, transaction });
+      console.log('Cleared queue for userId:', userId);
+
+      // Bước 2: Xáo trộn danh sách song_ids
+      const shuffledSongIds = [...song_ids].sort(() => Math.random() - 0.5);
+      console.log('Shuffled song_ids:', shuffledSongIds);
+
+      // Bước 3: Lấy thông tin bài hát từ danh sách song_ids theo thứ tự xáo trộn
+      const songs = await Song.findAll({
+        where: { song_id: shuffledSongIds },
+        transaction,
+      });
+
+      if (songs.length !== song_ids.length) {
+        await transaction.rollback();
+        return res.status(404).json({ message: 'Một hoặc nhiều bài hát không tồn tại' });
+      }
+
+      // Bước 4: Thêm các bài hát vào danh sách chờ
+      // Bài hát đầu tiên (index = 0) sẽ có position = 1 và is_current = true
+      const queueItems = await Promise.all(
+        songs.map(async (song, index) => {
+          // Lấy danh sách tên ca sĩ feat
+          let featArtists = [];
+          if (song.feat_artist_ids) {
+            const featArtistIds = Array.isArray(song.feat_artist_ids) 
+              ? song.feat_artist_ids 
+              : JSON.parse(song.feat_artist_ids);
+            const artists = await Artist.findAll({
+              where: { artist_id: featArtistIds },
+              attributes: ['stage_name'],
+              transaction,
+            });
+            featArtists = artists.map(artist => artist.stage_name);
+          }
+
+          const queueItem = await Queue.create(
+            {
+              user_id: userId,
+              song_id: song.song_id,
+              position: index + 1, // Vị trí bắt đầu từ 1
+              is_current: index === 0, // Bài hát ở position = 1 (index = 0) được đặt is_current = true
+              title: song.title,
+              duration: song.duration,
+              audio_file_url: song.audio_file_url,
+              img: song.img,
+              artist_id: song.artist_id,
+              artist_name: (await song.getMainArtist({ transaction })).stage_name,
+              feat_artists: featArtists,
+              album_name: song.album_id ? (await song.getAlbum({ transaction }))?.title : null,
+            },
+            { transaction }
+          );
+
+          return {
+            ...queueItem.toJSON(),
+            audio_file_url: queueItem.audio_file_url ? `${baseUrl}${queueItem.audio_file_url}` : null,
+            img: queueItem.img ? `${baseUrl}${queueItem.img}` : null,
+            feat_artists: featArtists,
+          };
+        })
+      );
+
+      await transaction.commit();
+      console.log('Successfully added songs to queue with random order, first song (position = 1) as current');
+      return res.status(200).json({ queue: queueItems });
+    } catch (error) {
+      await transaction.rollback();
+      throw error;
+    }
+  } catch (error) {
+    console.error('Error playing content:', error);
+    res.status(500).json({ message: 'Không thể phát nội dung' });
   }
 };
