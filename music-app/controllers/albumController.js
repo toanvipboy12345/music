@@ -278,7 +278,6 @@ exports.getAlbumsByArtist = async (req, res) => {
         { model: Song, as: 'Songs', attributes: ['song_id', 'title', 'duration', 'audio_file_url', 'img', 'is_downloadable'] },
       ],
     });
-    console.log('Albums by artist fetched:', albums.length);
 
     const baseUrl = `${req.protocol}://${req.get('host')}`;
     res.json({
@@ -305,5 +304,111 @@ exports.getAlbumsByArtist = async (req, res) => {
     res.status(500).json({ message: 'Lỗi server', error: error.message });
   }
 };
+exports.getAlbumById = async (req, res) => {
+  console.log(`[${new Date().toISOString()}] GET /albums/:albumId called with params:`, req.params);
+  try {
+    const { albumId } = req.params;
+    if (!Number.isInteger(parseInt(albumId))) {
+      console.log('Validation failed:', { albumId });
+      return res.status(400).json({ status: 'error', message: 'ID album không hợp lệ' });
+    }
 
+    const album = await Album.findByPk(albumId, {
+      include: [
+        { model: Artist, as: 'MainArtist', attributes: ['stage_name', 'profile_picture'] },
+        {
+          model: Song,
+          as: 'Songs',
+          attributes: [
+            'song_id',
+            'title',
+            'duration',
+            'release_date',
+            'audio_file_url',
+            'img',
+            'artist_id',
+            'feat_artist_ids',
+ "album_id",
+            'is_downloadable',
+            'created_at',
+            'listen_count'
+          ],
+          include: [
+            {
+              model: Album,
+              as: 'Album',
+              attributes: ['title'],
+              required: false
+            }
+          ]
+        }
+      ],
+    });
+
+    if (!album) {
+      console.log('Album not found:', albumId);
+      return res.status(404).json({ status: 'error', message: `Không tìm thấy album với ID ${albumId}` });
+    }
+
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+
+    // Xử lý danh sách bài hát để thêm thông tin ca sĩ feat, artist_name và album_name
+    const songsWithFeats = await Promise.all(
+      album.Songs.map(async (song) => {
+        let featArtists = [];
+        if (song.feat_artist_ids) {
+          try {
+            const featIds = JSON.parse(song.feat_artist_ids);
+            if (Array.isArray(featIds) && featIds.length > 0) {
+              const artists = await Artist.findAll({
+                where: { artist_id: { [Op.in]: featIds } },
+                attributes: ['stage_name']
+              });
+              featArtists = artists.map(artist => artist.stage_name);
+            }
+          } catch (e) {
+            console.error(`Lỗi khi parse feat_artist_ids cho bài hát ${song.song_id}:`, e.message);
+          }
+        }
+
+        return {
+          song_id: song.song_id,
+          title: song.title,
+          duration: song.duration,
+          release_date: song.release_date,
+          audio_file_url: formatUrl(song.audio_file_url, baseUrl),
+          img: formatUrl(song.img, baseUrl),
+          artist_id: song.artist_id,
+          artist_name: album.MainArtist.stage_name,
+          feat_artists: featArtists,
+          album_name: song.Album ? song.Album.title : null,
+          is_downloadable: song.is_downloadable,
+          created_at: song.created_at,
+          listen_count: song.listen_count
+        };
+      })
+    );
+
+    res.status(200).json({
+      status: 'success',
+      data: {
+        album: {
+          album_id: album.album_id,
+          title: album.title,
+          release_date: album.release_date,
+          img: formatUrl(album.img, baseUrl),
+          artist_id: album.artist_id,
+          artist_name: album.MainArtist.stage_name,
+          artist_profile_picture: formatUrl(album.MainArtist.profile_picture, baseUrl),
+          song_count: album.Songs.length,
+          songs: songsWithFeats,
+          created_at: album.created_at,
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Get album by ID error:', error.message, error.stack);
+    res.status(500).json({ status: 'error', message: error.message });
+  }
+};
 module.exports = exports;
