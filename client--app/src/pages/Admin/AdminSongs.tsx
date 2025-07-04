@@ -130,7 +130,7 @@ const AdminSongs: React.FC = () => {
     try {
       const [artistsResponse, genresResponse] = await Promise.all([
         api.get('/admin/artists', { params: { page: 1, limit: 50 } }),
-        api.get('/admin/genres'),
+        api.get('/admin/genres', { params: { page: 1, limit: 50 } }), // Tăng limit để lấy tất cả thể loại
       ]);
       console.log('Artists:', artistsResponse.data);
       console.log('Genres:', genresResponse.data);

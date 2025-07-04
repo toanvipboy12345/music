@@ -39,7 +39,7 @@ exports.getUserQueue = async (req, res) => {
 };
 
 exports.addSongToQueue = async (req, res) => {
-  const { song_id, playNow = false } = req.body;
+  const { song_id, playImmediately = false } = req.body;
   const userId = req.user.user_id;
   const baseUrl = `${req.protocol}://${req.get('host')}`;
 
@@ -48,16 +48,15 @@ exports.addSongToQueue = async (req, res) => {
   }
 
   try {
-    console.log('Adding song to queue:', { song_id, userId, playNow });
+    console.log('Adding song to queue:', { song_id, userId, playImmediately });
     const song = await Song.findByPk(song_id);
     if (!song) {
       return res.status(404).json({ message: 'Không tìm thấy bài hát' });
     }
 
-    // Lấy danh sách tên ca sĩ feat
     let featArtists = [];
     if (song.feat_artist_ids) {
-      const featArtistIds = JSON.parse(song.feat_artist_ids);
+      const featArtistIds = Array.isArray(song.feat_artist_ids) ? song.feat_artist_ids : JSON.parse(song.feat_artist_ids);
       const artists = await Artist.findAll({
         where: { artist_id: featArtistIds },
         attributes: ['stage_name'],
@@ -68,67 +67,96 @@ exports.addSongToQueue = async (req, res) => {
     const transaction = await sequelize.transaction();
 
     try {
-      // Kiểm tra xem bài hát đã có trong queue chưa
       const existingQueueItem = await Queue.findOne({
         where: { user_id: userId, song_id },
         transaction,
       });
 
-      if (existingQueueItem && playNow) {
-        console.log('Song already in queue, updating is_current:', song_id);
+      if (existingQueueItem && playImmediately) {
+        console.log('Song already in queue, updating is_current and position:', song_id);
         await Queue.update(
           { is_current: false },
           { where: { user_id: userId }, transaction }
         );
-        await existingQueueItem.update({ is_current: true }, { transaction });
 
-        const formattedQueueItem = {
-          ...existingQueueItem.toJSON(),
-          audio_file_url: existingQueueItem.audio_file_url ? `${baseUrl}${existingQueueItem.audio_file_url}` : null,
-          img: existingQueueItem.img ? `${baseUrl}${existingQueueItem.img}` : null,
-          feat_artists: featArtists,
-        };
+        const currentSong = await Queue.findOne({
+          where: { user_id: userId, is_current: true },
+          transaction,
+        });
 
-        await transaction.commit();
-        console.log('Successfully updated existing song in queue:', existingQueueItem);
-        return res.status(200).json({ queue_item: formattedQueueItem });
-      }
+        const newPosition = currentSong ? currentSong.position : 1;
 
-      if (playNow) {
-        // Lấy tất cả các bản ghi trong queue và sắp xếp theo position
         const queueItems = await Queue.findAll({
+          where: { user_id: userId, position: { [Op.gte]: newPosition } },
+          order: [['position', 'ASC']],
+          transaction,
+        });
+
+        for (let i = queueItems.length - 1; i >= 0; i--) {
+          await queueItems[i].update({ position: queueItems[i].position + 1 }, { transaction });
+        }
+
+        await existingQueueItem.update({ is_current: true, position: newPosition }, { transaction });
+
+        const updatedQueue = await Queue.findAll({
           where: { user_id: userId },
           order: [['position', 'ASC']],
           transaction,
         });
 
-        // Đảm bảo các position liên tục
-        for (let i = 0; i < queueItems.length; i++) {
-          const expectedPosition = i + 1;
-          if (queueItems[i].position !== expectedPosition) {
-            console.log(`Fixing position for queue item ${queueItems[i].queue_id}: ${queueItems[i].position} → ${expectedPosition}`);
-            await queueItems[i].update({ position: expectedPosition }, { transaction });
+        const formattedQueue = await Promise.all(updatedQueue.map(async (item) => {
+          let itemFeatArtists = [];
+          if (item.feat_artists && item.feat_artists.length > 0) {
+            const featArtistIds = Array.isArray(item.feat_artists) ? item.feat_artists : JSON.parse(item.feat_artists);
+            const artists = await Artist.findAll({
+              where: { artist_id: featArtistIds },
+              attributes: ['stage_name'],
+              transaction,
+            });
+            itemFeatArtists = artists.map(artist => artist.stage_name);
           }
-        }
 
-        // Cập nhật position từ cuối về đầu để tránh xung đột
-        console.log('Shifting all positions to add new song at position 1');
+          return {
+            ...item.toJSON(),
+            audio_file_url: item.audio_file_url ? `${baseUrl}${item.audio_file_url}` : null,
+            img: item.img ? `${baseUrl}${item.img}` : null,
+            feat_artists: itemFeatArtists,
+          };
+        }));
+
+        await transaction.commit();
+        console.log('Successfully updated existing song in queue:', existingQueueItem);
+        return res.status(200).json({ queue: formattedQueue });
+      }
+
+      if (playImmediately) {
+        const currentSong = await Queue.findOne({
+          where: { user_id: userId, is_current: true },
+          transaction,
+        });
+
+        const newPosition = currentSong ? currentSong.position : 1;
+
+        const queueItems = await Queue.findAll({
+          where: { user_id: userId, position: { [Op.gte]: newPosition } },
+          order: [['position', 'ASC']],
+          transaction,
+        });
+
         for (let i = queueItems.length - 1; i >= 0; i--) {
           await queueItems[i].update({ position: queueItems[i].position + 1 }, { transaction });
         }
 
-        // Đặt is_current=false cho tất cả
         await Queue.update(
           { is_current: false },
           { where: { user_id: userId }, transaction }
         );
 
-        // Thêm bài hát mới vào position: 1
         const queueItem = await Queue.create(
           {
             user_id: userId,
             song_id,
-            position: 1,
+            position: newPosition,
             is_current: true,
             title: song.title,
             duration: song.duration,
@@ -142,16 +170,35 @@ exports.addSongToQueue = async (req, res) => {
           { transaction }
         );
 
-        const formattedQueueItem = {
-          ...queueItem.toJSON(),
-          audio_file_url: queueItem.audio_file_url ? `${baseUrl}${queueItem.audio_file_url}` : null,
-          img: queueItem.img ? `${baseUrl}${queueItem.img}` : null,
-          feat_artists: featArtists,
-        };
+        const updatedQueue = await Queue.findAll({
+          where: { user_id: userId },
+          order: [['position', 'ASC']],
+          transaction,
+        });
+
+        const formattedQueue = await Promise.all(updatedQueue.map(async (item) => {
+          let itemFeatArtists = [];
+          if (item.feat_artists && item.feat_artists.length > 0) {
+            const featArtistIds = Array.isArray(item.feat_artists) ? item.feat_artists : JSON.parse(item.feat_artists);
+            const artists = await Artist.findAll({
+              where: { artist_id: featArtistIds },
+              attributes: ['stage_name'],
+              transaction,
+            });
+            itemFeatArtists = artists.map(artist => artist.stage_name);
+          }
+
+          return {
+            ...item.toJSON(),
+            audio_file_url: item.audio_file_url ? `${baseUrl}${item.audio_file_url}` : null,
+            img: item.img ? `${baseUrl}${item.img}` : null,
+            feat_artists: itemFeatArtists,
+          };
+        }));
 
         await transaction.commit();
-        console.log('Successfully added song to queue at position 1:', queueItem);
-        return res.status(201).json({ queue_item: formattedQueueItem });
+        console.log('Successfully added song to queue at position:', newPosition);
+        return res.status(201).json({ queue: formattedQueue });
       } else {
         const maxPosition = (await Queue.max('position', { where: { user_id: userId }, transaction })) || 0;
         const isQueueEmpty = maxPosition === 0;
@@ -174,16 +221,35 @@ exports.addSongToQueue = async (req, res) => {
           { transaction }
         );
 
-        const formattedQueueItem = {
-          ...queueItem.toJSON(),
-          audio_file_url: queueItem.audio_file_url ? `${baseUrl}${queueItem.audio_file_url}` : null,
-          img: queueItem.img ? `${baseUrl}${queueItem.img}` : null,
-          feat_artists: featArtists,
-        };
+        const updatedQueue = await Queue.findAll({
+          where: { user_id: userId },
+          order: [['position', 'ASC']],
+          transaction,
+        });
+
+        const formattedQueue = await Promise.all(updatedQueue.map(async (item) => {
+          let itemFeatArtists = [];
+          if (item.feat_artists && item.feat_artists.length > 0) {
+            const featArtistIds = Array.isArray(item.feat_artists) ? item.feat_artists : JSON.parse(item.feat_artists);
+            const artists = await Artist.findAll({
+              where: { artist_id: featArtistIds },
+              attributes: ['stage_name'],
+              transaction,
+            });
+            itemFeatArtists = artists.map(artist => artist.stage_name);
+          }
+
+          return {
+            ...item.toJSON(),
+            audio_file_url: item.audio_file_url ? `${baseUrl}${item.audio_file_url}` : null,
+            img: item.img ? `${baseUrl}${item.img}` : null,
+            feat_artists: itemFeatArtists,
+          };
+        }));
 
         await transaction.commit();
         console.log('Successfully added song to queue at end:', queueItem);
-        return res.status(201).json({ queue_item: formattedQueueItem });
+        return res.status(201).json({ queue: formattedQueue });
       }
     } catch (error) {
       await transaction.rollback();

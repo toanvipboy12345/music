@@ -13,11 +13,14 @@ CREATE TABLE Users (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+
 CREATE TABLE Genres (
     genre_id INT PRIMARY KEY AUTO_INCREMENT,
     name VARCHAR(50) NOT NULL UNIQUE,
+    img VARCHAR(255), -- Thêm trường img để lưu URL biểu tượng
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
 
 CREATE TABLE Artists (
     artist_id INT PRIMARY KEY AUTO_INCREMENT,
@@ -48,6 +51,7 @@ CREATE TABLE Songs (
     feat_artist_ids VARCHAR(255), -- Danh sách ca sĩ feat (JSON string), có thể NULL
     genre_id INT NOT NULL, -- Một thể loại
     album_id INT, -- Liên kết đến album, có thể NULL cho single
+    
     is_downloadable BOOLEAN DEFAULT FALSE,
     listen_count INT NOT NULL DEFAULT 0, -- Thêm trường listen_count
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

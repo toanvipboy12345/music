@@ -57,7 +57,23 @@ export const PlaylistDetail: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const { addToQueue, playContent, setPlaylist, setCurrentSongIndex, setArtistName, setIsExpanded } = useAudio();
 
+  // Function to generate random gradient
+  const generateRandomGradient = () => {
+    const colors = [
+      'purple-600', 'blue-600', 'red-600', 'green-600', 'pink-600', 
+      'indigo-600', 'teal-600', 'cyan-600', 'orange-600', 'violet-600'
+    ];
+    const randomColor1 = colors[Math.floor(Math.random() * colors.length)];
+    const randomColor2 = colors[Math.floor(Math.random() * colors.length)];
+    return `bg-gradient-to-b from-${randomColor1} to-${randomColor2}`;
+  };
+
+  const [gradient, setGradient] = useState<string>(generateRandomGradient());
+
   useEffect(() => {
+    // Update gradient on component mount
+    setGradient(generateRandomGradient());
+
     const fetchPlaylistDetail = async () => {
       console.log('PlaylistDetail: Trạng thái xác thực:', { isAuthenticated, userId, token, playlistId });
 
@@ -224,7 +240,7 @@ export const PlaylistDetail: React.FC = () => {
         </div>
       ) : (
         <div>
-          <div className="bg-gradient-to-b from-purple-600 to-neutral-900 h-64 mb-4 rounded-t-lg">
+          <div className={`${gradient} h-64 mb-4 rounded-t-lg`}>
             <div className="flex flex-col h-full">
               <div className="flex gap-4 items-center justify-start flex-1 py-4 px-8">
                 <div>

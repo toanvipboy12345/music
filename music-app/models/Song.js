@@ -82,6 +82,17 @@ const Song = sequelize.define('Song', {
       key: 'genre_id'
     }
   },
+    album_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    validate: {
+      isInt: { msg: 'ID album phải là số nguyên' }
+    },
+    references: {
+      model: 'Albums',
+      key: 'album_id'
+    }
+  },
   is_downloadable: {
     type: DataTypes.BOOLEAN,
     allowNull: false,

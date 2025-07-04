@@ -1,4 +1,4 @@
-const { Op } = require('sequelize');
+const { Op, Sequelize } = require('sequelize');
 const { Artist, Song, Album } = require('../models');
 
 exports.searchAll = async (req, res) => {
@@ -15,7 +15,11 @@ exports.searchAll = async (req, res) => {
     const baseUrl = `${req.protocol}://${req.get('host')}`;
 
     // Tìm kiếm ca sĩ
-    const artistWhere = { stage_name: { [Op.like]: `%${search}%` } };
+    const artistWhere = {
+      stage_name: {
+        [Op.like]: `%${search}%`,
+      },
+    };
     const artists = await Artist.findAll({
       where: artistWhere,
       attributes: ['artist_id', 'stage_name', 'profile_picture'],
@@ -25,22 +29,18 @@ exports.searchAll = async (req, res) => {
     });
     const artistTotal = await Artist.count({ where: artistWhere });
 
-    // Tìm kiếm bài hát (bao gồm cả nghệ sĩ chính và góp mặt)
+    // Log kết quả tìm kiếm ca sĩ
+    console.log(`Found ${artistTotal} artists:`, artists.map(artist => ({
+      artist_id: artist.artist_id,
+      stage_name: artist.stage_name,
+      profile_picture: artist.profile_picture,
+    })));
+
+    // Tìm kiếm bài hát (bao gồm tiêu đề và nghệ sĩ chính)
     const songWhere = {
       [Op.or]: [
         { title: { [Op.like]: `%${search}%` } },
-        {
-          feat_artist_ids: {
-            [Op.ne]: null,
-            [Op.or]: [
-              { [Op.like]: `%"${search}"%` },
-              { [Op.like]: `%[${search}]%` },
-              { [Op.like]: `%[${search},%` },
-              { [Op.like]: `%,${search}]%` },
-              { [Op.like]: `%,${search},%` },
-            ],
-          },
-        },
+        { '$MainArtist.stage_name$': { [Op.like]: `%${search}%` } },
       ],
     };
     const songs = await Song.findAll({
@@ -74,18 +74,16 @@ exports.searchAll = async (req, res) => {
       offset,
       order: [['created_at', 'DESC']],
     });
-    const songTotal = await Song.count({ where: songWhere });
-
-    // Tìm kiếm album
-    const albumWhere = { title: { [Op.like]: `%${search}%` } };
-    const albums = await Album.findAll({
-      where: albumWhere,
-      attributes: ['album_id', 'title', 'img'],
-      limit: parseInt(limit),
-      offset,
-      order: [['created_at', 'DESC']],
+    const songTotal = await Song.count({
+      where: songWhere,
+      include: [
+        {
+          model: Artist,
+          as: 'MainArtist',
+          attributes: [],
+        },
+      ],
     });
-    const albumTotal = await Album.count({ where: albumWhere });
 
     // Xử lý danh sách bài hát
     const processedSongs = await Promise.all(
@@ -93,7 +91,15 @@ exports.searchAll = async (req, res) => {
         const songData = song.toJSON();
         let featArtists = [];
         if (songData.feat_artist_ids) {
-          const featIds = JSON.parse(songData.feat_artist_ids);
+          let featIds;
+          try {
+            featIds = Array.isArray(songData.feat_artist_ids)
+              ? songData.feat_artist_ids
+              : JSON.parse(songData.feat_artist_ids);
+          } catch (error) {
+            console.error(`Error parsing feat_artist_ids for song ${songData.song_id}:`, error);
+            featIds = [];
+          }
           featArtists = await Artist.findAll({
             where: { artist_id: featIds },
             attributes: ['stage_name'],
@@ -119,18 +125,40 @@ exports.searchAll = async (req, res) => {
       })
     );
 
+    // Log kết quả tìm kiếm bài hát
+    console.log(`Found ${songTotal} songs:`, processedSongs);
+
+    // Tìm kiếm album
+    const albumWhere = {
+      title: {
+        [Op.like]: `%${search}%`,
+      },
+    };
+    const albums = await Album.findAll({
+      where: albumWhere,
+      attributes: ['album_id', 'title', 'img', 'release_date'],
+      limit: parseInt(limit),
+      offset,
+      order: [['created_at', 'DESC']],
+    });
+    const albumTotal = await Album.count({ where: albumWhere });
+
     // Xử lý danh sách album
     const processedAlbums = albums.map(album => ({
       album_id: album.album_id,
       title: album.title,
       img: album.img ? `${baseUrl}${album.img}` : null,
+      release_year: album.release_date ? new Date(album.release_date).getFullYear() : null,
     }));
+
+    // Log kết quả tìm kiếm album
+    console.log(`Found ${albumTotal} albums:`, processedAlbums);
 
     // Xử lý danh sách ca sĩ
     const processedArtists = artists.map(artist => ({
       artist_id: artist.artist_id,
       stage_name: artist.stage_name,
-      profile_picture: artist.profile_picture, // Không áp dụng baseUrl
+      profile_picture: artist.profile_picture,
     }));
 
     res.json({

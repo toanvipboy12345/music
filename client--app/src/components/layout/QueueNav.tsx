@@ -1,14 +1,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Activity } from 'react-feather'; // Thêm Activity cho trạng thái trống
-import { useAudio } from '../../context/AudioContext';
+import { X, Activity } from 'react-feather';
+import { useAudio } from '../../context/AudioContext'; // Chỉ import useAudio
 import { useAuth } from '../../context/authContext';
 import { toast } from 'sonner';
 import api from '../../services/api';
 
-interface QueueItem {
-  queue_id: number;
+// Định nghĩa QueueItem trong QueueNav để khớp với AudioContext
+interface Song {
   song_id: number;
   title: string;
   duration: number;
@@ -18,9 +18,15 @@ interface QueueItem {
   artist_name: string;
   feat_artists: string[];
   album_name: string | null;
+  release_date?: string;
+  is_downloadable?: boolean;
+  created_at?: string;
+  listen_count?: number;
+}
+
+interface QueueItem extends Song {
   position: number;
   is_current: boolean;
-  created_at: string;
 }
 
 const QueueNav: React.FC = () => {
@@ -30,14 +36,9 @@ const QueueNav: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Giả lập loading trong 1 giây
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 1000);
+    const timer = setTimeout(() => setIsLoading(false), 1000);
     return () => clearTimeout(timer);
   }, []);
-
-
 
   const handleSelectSong = async (item: QueueItem) => {
     if (!isAuthenticated || !token) {
@@ -45,7 +46,7 @@ const QueueNav: React.FC = () => {
         style: { background: 'black', color: 'white' },
         action: {
           label: 'Đăng nhập',
-          onClick: () => window.location.href = '/login',
+          onClick: () => (window.location.href = '/login'),
         },
       });
       return;
@@ -64,13 +65,19 @@ const QueueNav: React.FC = () => {
         duration: item.duration,
         audio_file_url: item.audio_file_url,
         img: item.img,
-        artist_id: item.artist_id || 0,
+        artist_id: item.artist_id,
         artist_name: item.artist_name,
         feat_artists: item.feat_artists,
         album_name: item.album_name,
+        release_date: item.release_date,
+        is_downloadable: item.is_downloadable,
+        created_at: item.created_at,
+        listen_count: item.listen_count,
+        position: item.position, // Thêm position
+        is_current: true, // Đặt is_current thành true
       });
       setArtistName(item.artist_name);
-      setCurrentSongIndex(queue.findIndex(q => q.song_id === item.song_id));
+      setCurrentSongIndex(queue.findIndex((q) => q.song_id === item.song_id));
       await fetchQueue();
       toast.success(`Đang phát: ${item.title}`, {
         style: { background: 'black', color: 'white' },
@@ -91,7 +98,7 @@ const QueueNav: React.FC = () => {
         style: { background: 'black', color: 'white' },
         action: {
           label: 'Đăng nhập',
-          onClick: () => window.location.href = '/login',
+          onClick: () => (window.location.href = '/login'),
         },
       });
       return;
@@ -152,15 +159,15 @@ const QueueNav: React.FC = () => {
               </div>
               {queue.length > 0 ? (
                 <div className="space-y-4">
-                  {queue.find(item => item.is_current) && (
+                  {queue.find((item) => item.is_current) && (
                     <div>
                       <h4 className="text-base font-bold text-white mb-2">Đang phát</h4>
                       <ul className="space-y-2">
                         {queue
-                          .filter(item => item.is_current)
-                          .map(item => (
+                          .filter((item) => item.is_current)
+                          .map((item) => (
                             <li
-                              key={item.queue_id}
+                              key={item.song_id} // Sử dụng song_id làm key
                               className="flex items-center justify-between p-3 rounded-lg bg-green-900 cursor-pointer transition-colors"
                               onClick={() => handleSelectSong(item)}
                             >
@@ -178,8 +185,7 @@ const QueueNav: React.FC = () => {
                                   </span>
                                 </div>
                               </div>
-                              <div className="flex items-center space-x-4">
-                              </div>
+                              <div className="flex items-center space-x-4"></div>
                             </li>
                           ))}
                       </ul>
@@ -189,11 +195,11 @@ const QueueNav: React.FC = () => {
                     <h4 className="text-base font-bold text-white mb-2">Tiếp theo</h4>
                     <ul className="space-y-2">
                       {queue
-                        .filter(item => !item.is_current)
+                        .filter((item) => !item.is_current)
                         .sort((a, b) => a.position - b.position)
-                        .map(item => (
+                        .map((item) => (
                           <li
-                            key={item.queue_id}
+                            key={item.song_id} // Sử dụng song_id làm key
                             className="flex items-center justify-between p-3 rounded-lg hover:bg-zinc-800 cursor-pointer transition-colors"
                             onClick={() => handleSelectSong(item)}
                           >

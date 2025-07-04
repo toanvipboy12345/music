@@ -20,7 +20,8 @@ const buttonVariants = cva(
         ghost:
           "text-white hover:bg-white hover:text-black",
         link: "text-white bg-black hover:bg-gray-800 hover:text-white",
-
+        filter:
+          "bg-gray-900 text-white hover:bg-gray-700 hover:text-white", // Thêm variant mới
       },
       size: {
         default: "h-9 px-4 py-2 has-[>svg]:px-3",

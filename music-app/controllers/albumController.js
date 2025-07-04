@@ -304,14 +304,11 @@ exports.getAlbumsByArtist = async (req, res) => {
     res.status(500).json({ message: 'Lỗi server', error: error.message });
   }
 };
+
 exports.getAlbumById = async (req, res) => {
   console.log(`[${new Date().toISOString()}] GET /albums/:albumId called with params:`, req.params);
   try {
     const { albumId } = req.params;
-    if (!Number.isInteger(parseInt(albumId))) {
-      console.log('Validation failed:', { albumId });
-      return res.status(400).json({ status: 'error', message: 'ID album không hợp lệ' });
-    }
 
     const album = await Album.findByPk(albumId, {
       include: [
@@ -328,7 +325,7 @@ exports.getAlbumById = async (req, res) => {
             'img',
             'artist_id',
             'feat_artist_ids',
- "album_id",
+            'album_id',
             'is_downloadable',
             'created_at',
             'listen_count'
@@ -351,6 +348,22 @@ exports.getAlbumById = async (req, res) => {
     }
 
     const baseUrl = `${req.protocol}://${req.get('host')}`;
+
+    // Tính tổng thời lượng các bài hát
+    const totalDuration = album.Songs.reduce((sum, song) => sum + (song.duration || 0), 0);
+
+    // Lấy danh sách các album khác của cùng ca sĩ (không bao gồm danh sách bài hát)
+    const relatedAlbums = await Album.findAll({
+      where: {
+        artist_id: album.artist_id,
+        album_id: { [Op.ne]: album.album_id } // Không lấy album hiện tại
+      },
+      attributes: {
+        include: ['album_id', 'title', 'release_date', 'img', 'artist_id'],
+        exclude: ['created_at'] // Loại bỏ cột created_at
+      },
+      order: [['created_at', 'DESC']]
+    });
 
     // Xử lý danh sách bài hát để thêm thông tin ca sĩ feat, artist_name và album_name
     const songsWithFeats = await Promise.all(
@@ -401,7 +414,15 @@ exports.getAlbumById = async (req, res) => {
           artist_name: album.MainArtist.stage_name,
           artist_profile_picture: formatUrl(album.MainArtist.profile_picture, baseUrl),
           song_count: album.Songs.length,
+          total_duration: totalDuration, // Tổng thời lượng các bài hát (tính bằng giây)
           songs: songsWithFeats,
+          related_albums: relatedAlbums.map(related => ({
+            album_id: related.album_id,
+            title: related.title,
+            release_date: related.release_date,
+            img: formatUrl(related.img, baseUrl),
+            artist_id: related.artist_id
+          })),
           created_at: album.created_at,
         }
       }

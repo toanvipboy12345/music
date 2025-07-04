@@ -23,10 +23,10 @@ app.use('/uploads/album', express.static(path.join(__dirname, 'uploads/album')))
 app.use('/uploads/playlist', express.static(path.join(__dirname, 'uploads/playlist')));
 
 // Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/admin', adminRoutes);
-app.use('/api/public', publicRoutes);
-app.use('/api/user', userRoutes);
+app.use('/v1/auth', authRoutes);
+app.use('/v1/admin', adminRoutes);
+app.use('/v1/public', publicRoutes);
+app.use('/v1/user', userRoutes);
 
 // Error handling
 app.use(errorMiddleware);
