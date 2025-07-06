@@ -1,6 +1,7 @@
 const { Op } = require('sequelize');
 const axios = require('axios');
 const Genre = require('../models/Genre');
+const Song = require('../models/Song');
 
 exports.getGenres = async (req, res) => {
     try {
@@ -45,9 +46,30 @@ exports.getGenreById = async (req, res) => {
     }
 };
 
+exports.deleteGenre = async (req, res) => {
+    try {
+        const genre = await Genre.findOne({ where: { genre_id: req.params.id } });
+        if (!genre) {
+            return res.status(404).json({ message: 'Không tìm thấy thể loại' });
+        }
+
+        const songsWithGenre = await Song.count({ where: { genre_id: req.params.id } });
+        if (songsWithGenre > 0) {
+            return res.status(400).json({ message: 'Không thể xóa thể loại vì vẫn còn bài hát liên kết' });
+        }
+
+        await genre.destroy();
+        res.json({ 
+            message: 'Xóa thể loại thành công' 
+        });
+    } catch (error) {
+        console.error('Delete genre error:', error.message, error.stack);
+        res.status(500).json({ message: 'Lỗi server khi xóa thể loại', error: error.message });
+    }
+};
+
 exports.syncGenresFromSpotify = async (req, res) => {
     try {
-        // Lấy thông tin xác thực Spotify từ biến môi trường
         const clientId = process.env.SPOTIFY_CLIENT_ID;
         const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
         console.log('Spotify credentials:', { clientId, clientSecret });
@@ -59,7 +81,6 @@ exports.syncGenresFromSpotify = async (req, res) => {
 
         const auth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
 
-        // Lấy token từ Spotify
         console.log('Requesting Spotify token...');
         const tokenResponse = await axios.post(
             'https://accounts.spotify.com/api/token',
@@ -74,7 +95,6 @@ exports.syncGenresFromSpotify = async (req, res) => {
         const accessToken = tokenResponse.data.access_token;
         console.log('Spotify token received:', accessToken ? 'Success' : 'Failed');
 
-        // Lấy danh sách danh mục từ Spotify API
         console.log('Fetching categories from Spotify...');
         const categoriesResponse = await axios.get(
             'https://api.spotify.com/v1/browse/categories?limit=50',
@@ -86,7 +106,6 @@ exports.syncGenresFromSpotify = async (req, res) => {
 
         const categories = categoriesResponse.data.categories.items;
 
-        // Xử lý từng danh mục
         let createdCount = 0;
         let updatedCount = 0;
 
@@ -94,16 +113,13 @@ exports.syncGenresFromSpotify = async (req, res) => {
             const { name, icons } = category;
             const img = icons[0]?.url || null;
 
-            // Kiểm tra xem thể loại đã tồn tại chưa
             const existingGenre = await Genre.findOne({ where: { name } });
 
             if (existingGenre) {
-                // Nếu thể loại đã tồn tại, chỉ cập nhật img
                 await existingGenre.update({ img });
                 console.log(`Đã cập nhật img cho thể loại: ${name}`);
                 updatedCount++;
             } else {
-                // Nếu thể loại chưa tồn tại, tạo mới
                 await Genre.create({
                     name,
                     img
