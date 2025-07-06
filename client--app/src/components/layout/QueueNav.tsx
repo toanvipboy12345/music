@@ -1,13 +1,16 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Link } from 'react-router-dom';
 import { X, Activity } from 'react-feather';
-import { useAudio } from '../../context/AudioContext'; // Chỉ import useAudio
+import { useAudio } from '../../context/AudioContext';
 import { useAuth } from '../../context/authContext';
 import { toast } from 'sonner';
 import api from '../../services/api';
+import Skeleton from 'react-loading-skeleton';
+import 'react-loading-skeleton/dist/skeleton.css';
 
-// Định nghĩa QueueItem trong QueueNav để khớp với AudioContext
+// Định nghĩa interface cho dữ liệu
 interface Song {
   song_id: number;
   title: string;
@@ -16,7 +19,7 @@ interface Song {
   img: string;
   artist_id: number;
   artist_name: string;
-  feat_artists: string[];
+  feat_artists: { artist_id: number; stage_name: string }[];
   album_name: string | null;
   release_date?: string;
   is_downloadable?: boolean;
@@ -32,7 +35,6 @@ interface QueueItem extends Song {
 const QueueNav: React.FC = () => {
   const { queue, setCurrentSong, setCurrentSongIndex, setArtistName, fetchQueue, isQueueNavOpen, setIsQueueNavOpen } = useAudio();
   const { isAuthenticated, token } = useAuth();
-
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -60,21 +62,8 @@ const QueueNav: React.FC = () => {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setCurrentSong({
-        song_id: item.song_id,
-        title: item.title,
-        duration: item.duration,
-        audio_file_url: item.audio_file_url,
-        img: item.img,
-        artist_id: item.artist_id,
-        artist_name: item.artist_name,
-        feat_artists: item.feat_artists,
-        album_name: item.album_name,
-        release_date: item.release_date,
-        is_downloadable: item.is_downloadable,
-        created_at: item.created_at,
-        listen_count: item.listen_count,
-        position: item.position, // Thêm position
-        is_current: true, // Đặt is_current thành true
+        ...item,
+        is_current: true,
       });
       setArtistName(item.artist_name);
       setCurrentSongIndex(queue.findIndex((q) => q.song_id === item.song_id));
@@ -134,14 +123,15 @@ const QueueNav: React.FC = () => {
         >
           {isLoading ? (
             <div className="flex items-center justify-center h-full">
-              <div className="space-y-4 animate-pulse">
+              <div className="space-y-4 p-3 w-full">
                 {[1, 2, 3].map((item) => (
-                  <div key={item} className="flex items-center p-3 space-x-4">
-                    <div className="w-12 h-12 bg-gray-700 rounded" />
+                  <div key={item} className="flex items-center space-x-3">
+                    <Skeleton height={48} width={48} className="rounded" />
                     <div className="flex-1 space-y-2">
-                      <div className="h-4 bg-gray-700 rounded w-3/4" />
-                      <div className="h-3 bg-gray-700 rounded w-1/2" />
+                      <Skeleton height={16} width={150} />
+                      <Skeleton height={12} width={100} />
                     </div>
+                    <Skeleton height={20} width={20} className="rounded-full" />
                   </div>
                 ))}
               </div>
@@ -167,7 +157,7 @@ const QueueNav: React.FC = () => {
                           .filter((item) => item.is_current)
                           .map((item) => (
                             <li
-                              key={item.song_id} // Sử dụng song_id làm key
+                              key={item.song_id}
                               className="flex items-center justify-between p-3 rounded-lg bg-green-900 cursor-pointer transition-colors"
                               onClick={() => handleSelectSong(item)}
                             >
@@ -176,16 +166,46 @@ const QueueNav: React.FC = () => {
                                   src={item.img}
                                   alt={item.title}
                                   className="w-12 h-12 object-cover rounded"
+                                  loading="lazy"
                                 />
                                 <div className="flex flex-col">
-                                  <span className="text-white font-medium">{item.title}</span>
-                                  <span className="text-gray-400 text-sm">
-                                    {item.artist_name}
-                                    {item.feat_artists.length > 0 ? ` feat. ${item.feat_artists.join(', ')}` : ''}
+                                  <span className="text-white font-medium line-clamp-1">{item.title}</span>
+                                  <span className="text-gray-400 text-sm line-clamp-1">
+                                    <Link
+                                      to={`/artists/${item.artist_id}`}
+                                      className="hover:underline"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      {item.artist_name}
+                                    </Link>
+                                    {item.feat_artists.length > 0 && (
+                                      <span>
+                                        {' '}feat.{' '}
+                                        {item.feat_artists.map((featArtist, idx) => (
+                                          <span key={featArtist.artist_id}>
+                                            <Link
+                                              to={`/artists/${featArtist.artist_id}`}
+                                              className="hover:underline"
+                                              onClick={(e) => e.stopPropagation()}
+                                            >
+                                              {featArtist.stage_name}
+                                            </Link>
+                                            {idx < item.feat_artists.length - 1 ? ', ' : ''}
+                                          </span>
+                                        ))}
+                                      </span>
+                                    )}
                                   </span>
                                 </div>
                               </div>
-                              <div className="flex items-center space-x-4"></div>
+                              <div className="flex items-center space-x-4">
+                                <button
+                                  onClick={(e) => handleRemoveFromQueue(item.song_id, e)}
+                                  className="text-gray-400 hover:text-white"
+                                >
+                                  <X className="w-5 h-5" />
+                                </button>
+                              </div>
                             </li>
                           ))}
                       </ul>
@@ -199,7 +219,7 @@ const QueueNav: React.FC = () => {
                         .sort((a, b) => a.position - b.position)
                         .map((item) => (
                           <li
-                            key={item.song_id} // Sử dụng song_id làm key
+                            key={item.song_id}
                             className="flex items-center justify-between p-3 rounded-lg hover:bg-zinc-800 cursor-pointer transition-colors"
                             onClick={() => handleSelectSong(item)}
                           >
@@ -208,12 +228,35 @@ const QueueNav: React.FC = () => {
                                 src={item.img}
                                 alt={item.title}
                                 className="w-12 h-12 object-cover rounded"
+                                loading="lazy"
                               />
                               <div className="flex flex-col">
-                                <span className="text-white font-medium">{item.title}</span>
-                                <span className="text-gray-400 text-sm">
-                                  {item.artist_name}
-                                  {item.feat_artists.length > 0 ? ` feat. ${item.feat_artists.join(', ')}` : ''}
+                                <span className="text-white font-medium line-clamp-1">{item.title}</span>
+                                <span className="text-gray-400 text-sm line-clamp-1">
+                                  <Link
+                                    to={`/artists/${item.artist_id}`}
+                                    className="hover:underline"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    {item.artist_name}
+                                  </Link>
+                                  {item.feat_artists.length > 0 && (
+                                    <span>
+                                      {' '}feat.{' '}
+                                      {item.feat_artists.map((featArtist, idx) => (
+                                        <span key={featArtist.artist_id}>
+                                          <Link
+                                            to={`/artists/${featArtist.artist_id}`}
+                                            className="hover:underline"
+                                            onClick={(e) => e.stopPropagation()}
+                                          >
+                                            {featArtist.stage_name}
+                                          </Link>
+                                          {idx < item.feat_artists.length - 1 ? ', ' : ''}
+                                        </span>
+                                      ))}
+                                    </span>
+                                  )}
                                 </span>
                               </div>
                             </div>

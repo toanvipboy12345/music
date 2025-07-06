@@ -89,7 +89,7 @@ export const CollectionList: React.FC = () => {
           breakpoints={{
             640: { slidesPerView: 2 },
             768: { slidesPerView: 3 },
-            1024: { slidesPerView: 6 },
+            1024: { slidesPerView: 7 },
           }}
           className="w-full"
         >
@@ -112,11 +112,11 @@ export const CollectionList: React.FC = () => {
                     <img
                       src={collection.img}
                       alt={collection.artist_name}
-                      className="w-40 object-contain"
+                      className="w-34 object-contain"
                     />
                   </div>
                   <div className="bg-inherit text-center p-0">
-                    <h3 className="text-xl font-semibold text-black">
+                    <h3 className="text-lg font-semibold text-black">
                       {collection.artist_name.toUpperCase()}
                     </h3>
                   </div>

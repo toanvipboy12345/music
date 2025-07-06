@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox"; // Thêm Checkbox component
 import { Toaster, toast } from "sonner";
 import api from "../../services/api";
 
@@ -34,6 +35,7 @@ interface NewPlaylistForm {
   title: string;
   description?: string;
   imgFile?: File | null;
+  is_public?: boolean; // Thêm is_public vào interface
 }
 
 export const UserNavigation: React.FC = () => {
@@ -44,6 +46,7 @@ export const UserNavigation: React.FC = () => {
   const [newPlaylist, setNewPlaylist] = useState<NewPlaylistForm>({
     title: "",
     description: "",
+    is_public: true, // Mặc định là công khai
   });
   const [isLoading, setIsLoading] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -111,6 +114,7 @@ export const UserNavigation: React.FC = () => {
     if (newPlaylist.imgFile) {
       formData.append("img_file", newPlaylist.imgFile);
     }
+    formData.append("is_public", newPlaylist.is_public ? "true" : "false"); // Thêm is_public vào FormData
 
     try {
       setIsLoading(true);
@@ -122,7 +126,7 @@ export const UserNavigation: React.FC = () => {
       });
       setTimeout(() => {
         setIsModalOpen(false);
-        setNewPlaylist({ title: "", description: "", imgFile: null });
+        setNewPlaylist({ title: "", description: "", imgFile: null, is_public: true });
         setImagePreview(null);
         fetchPlaylists();
         setIsLoading(false);
@@ -164,6 +168,14 @@ export const UserNavigation: React.FC = () => {
     } else {
       setImagePreview(null);
     }
+  };
+
+  const handlePublicChange = (checked: boolean) => {
+    setNewPlaylist({ ...newPlaylist, is_public: checked });
+  };
+
+  const handlePrivateChange = (checked: boolean) => {
+    setNewPlaylist({ ...newPlaylist, is_public: !checked });
   };
 
   return (
@@ -242,6 +254,29 @@ export const UserNavigation: React.FC = () => {
                       className="mt-1 bg-neutral-800 text-white border-neutral-700 placeholder-neutral-400"
                       disabled={isLoading}
                     />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-white">Chế độ</Label>
+                    <div className="flex items-center space-x-4">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="public"
+                          checked={newPlaylist.is_public === true}
+                          onCheckedChange={handlePublicChange}
+                          disabled={isLoading}
+                        />
+                        <Label htmlFor="public" className="text-white">Công khai</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="private"
+                          checked={newPlaylist.is_public === false}
+                          onCheckedChange={handlePrivateChange}
+                          disabled={isLoading}
+                        />
+                        <Label htmlFor="private" className="text-white">Riêng tư</Label>
+                      </div>
+                    </div>
                   </div>
                   <Button
                     type="submit"

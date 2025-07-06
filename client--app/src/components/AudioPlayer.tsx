@@ -18,10 +18,13 @@ interface Song {
   img: string;
   artist_id: number;
   artist_name: string;
-  feat_artists: string[];
+  feat_artists: { artist_id: number; stage_name: string }[];
   album_name: string | null;
+  release_date?: string;
+  is_downloadable?: boolean;
+  created_at?: string;
+  listen_count?: number;
 }
-
 
 interface AudioPlayerProps {
   song: Song | null;
@@ -52,21 +55,20 @@ const AudioPlayerComponent: React.FC<AudioPlayerProps> = ({
   const audioPlayerRef = useRef<AudioPlayer>(null);
   const isPlayingRef = useRef<boolean>(false);
   const lastSongIdRef = useRef<number | null>(null);
-  const [randomColor, setRandomColor] = useState<string>("bg-purple-500"); // State để lưu màu ngẫu nhiên
+  const [randomColor, setRandomColor] = useState<string>("bg-gradient-to-b from-purple-600 to-neutral-900");
 
   const colors = [
-    "bg-purple-500",
-    "bg-blue-500",
-    "bg-green-500",
-    "bg-pink-500",
-    "bg-indigo-500",
-    "bg-red-500",
-    "bg-yellow-500",
-  ]; // Mảng màu Tailwind
+    "bg-gradient-to-b from-purple-600 to-neutral-900",
+    "bg-gradient-to-b from-blue-600 to-neutral-900",
+    "bg-gradient-to-b from-green-600 to-neutral-900",
+    "bg-gradient-to-b from-pink-600 to-neutral-900",
+    "bg-gradient-to-b from-indigo-600 to-neutral-900",
+    "bg-gradient-to-b from-red-600 to-neutral-900",
+    "bg-gradient-to-b from-yellow-600 to-neutral-900",
+  ];
 
   useEffect(() => {
     if (isExpanded) {
-      // Chọn màu ngẫu nhiên khi mở rộng
       const randomIndex = Math.floor(Math.random() * colors.length);
       setRandomColor(colors[randomIndex]);
     }
@@ -229,17 +231,7 @@ const AudioPlayerComponent: React.FC<AudioPlayerProps> = ({
       );
       console.log("Updated current song on server:", nextSong.song_id);
 
-      setCurrentSong({
-        song_id: nextSong.song_id,
-        title: nextSong.title,
-        duration: nextSong.duration,
-        audio_file_url: nextSong.audio_file_url,
-        img: nextSong.img,
-        artist_id: nextSong.artist_id || 0,
-        artist_name: nextSong.artist_name,
-        feat_artists: nextSong.feat_artists,
-        album_name: nextSong.album_name,
-      });
+      setCurrentSong(nextSong); // Sử dụng trực tiếp nextSong (QueueItem)
       setCurrentSongIndex(currentIndex + 1);
       setArtistName(nextSong.artist_name);
       await fetchQueue();
@@ -303,17 +295,7 @@ const AudioPlayerComponent: React.FC<AudioPlayerProps> = ({
       );
       console.log("Updated current song on server:", prevSong.song_id);
 
-      setCurrentSong({
-        song_id: prevSong.song_id,
-        title: prevSong.title,
-        duration: prevSong.duration,
-        audio_file_url: prevSong.audio_file_url,
-        img: prevSong.img,
-        artist_id: prevSong.artist_id || 0,
-        artist_name: prevSong.artist_name,
-        feat_artists: prevSong.feat_artists,
-        album_name: prevSong.album_name,
-      });
+      setCurrentSong(prevSong); // Sử dụng trực tiếp prevSong (QueueItem)
       setCurrentSongIndex(currentIndex - 1);
       setArtistName(prevSong.artist_name);
       await fetchQueue();
@@ -381,8 +363,6 @@ const AudioPlayerComponent: React.FC<AudioPlayerProps> = ({
       onClose();
     }
   };
-
-
 
   return (
     <>
