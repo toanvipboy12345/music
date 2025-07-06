@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useEffect, useState } from 'react';
-import { useParams, useLocation, useNavigate } from 'react-router-dom';
+import { useParams, useLocation, useNavigate, Link } from 'react-router-dom';
 import Skeleton from 'react-loading-skeleton';
 import 'react-loading-skeleton/dist/skeleton.css';
-import { Clock, Play, Download, MoreHorizontal, List } from 'react-feather';
+import { PlayIcon, ArrowDownTrayIcon, EllipsisHorizontalIcon, QueueListIcon, ClockIcon } from '@heroicons/react/24/solid';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Toaster, toast } from "sonner";
@@ -19,11 +19,11 @@ interface Song {
   audio_file_url: string;
   img: string;
   artist_id: number;
-  feat_artists: string[];
+  artist_name: string;
+  feat_artists: { artist_id: number; stage_name: string }[];
   album_name: string | null;
   is_downloadable: boolean;
   created_at: string;
-  artist_name: string;
   listen_count: number;
 }
 
@@ -153,7 +153,7 @@ export const CollectionDetail: React.FC = () => {
     }
     try {
       console.log('Adding song to queue:', song.song_id, song.title);
-      await addToQueue(song, false); // Thêm vào cuối queue
+      await addToQueue(song, false);
       toast.success('Đã thêm bài hát vào danh sách chờ', {
         style: { background: 'black', color: 'white' },
       });
@@ -215,15 +215,14 @@ export const CollectionDetail: React.FC = () => {
     }
     try {
       console.log('Handling song click:', { song_id: song.song_id, title: song.title });
-      await addToQueue(song, true); // Phát ngay bài hát
-      // Chuyển đổi songs thành QueueItem[] cho setPlaylist
+      await addToQueue(song, true);
       const queueItems: QueueItem[] = (collectionDetail?.songs || []).map((s, i) => ({
         ...s,
-        position: i + 1, // Gán position dựa trên thứ tự trong danh sách
-        is_current: i === index, // Chỉ bài hát được chọn là is_current
+        position: i + 1,
+        is_current: i === index,
       }));
       setPlaylist(queueItems);
-      setCurrentSongIndex(index); // Sử dụng index thực tế của bài hát
+      setCurrentSongIndex(index);
     } catch (error: any) {
       console.error('Error playing song:', error);
       toast.error(error.response?.data?.message || 'Không thể phát bài hát', {
@@ -282,25 +281,25 @@ export const CollectionDetail: React.FC = () => {
                   </div>
                 </div>
                 <div className="h-auto text-start ml-1.5">
-                  <h2 className="text-sm text-white">Danh sách phát công khai</h2>
+                  <h2 className="text-sm text-white font-medium">Danh sách phát công khai</h2>
                   <h1 className="text-8xl font-bold uppercase">
                     This Is {collection.artist_name}
                   </h1>
-                  <p className="text-sm text-white">
+                  <p className="text-sm text-white font-medium">
                     Các bản nhạc bạn nên nghe, tất cả trong một danh sách phát.
                   </p>
                 </div>
               </div>
               <div className="py-2 px-7 flex items-center justify-between mb-4">
                 <div className="flex items-center space-x-4">
-                  <button onClick={handlePlayContent}>
-                    <Play className="w-6 h-6 text-white" />
+                  <button onClick={handlePlayContent} className="hover:text-gray-300 active:text-gray-200">
+                    <PlayIcon className="w-6 h-6 text-white" />
                   </button>
-                  <Download className="w-6 h-6 text-white" />
-                  <MoreHorizontal className="w-6 h-6 text-white" />
+                  <ArrowDownTrayIcon className="w-6 h-6 text-white hover:text-gray-300 active:text-gray-200" />
+                  <EllipsisHorizontalIcon className="w-6 h-6 text-white hover:text-gray-300 active:text-gray-200" />
                 </div>
                 <div className="flex items-center space-x-2">
-                  <List className="w-6 h-6 text-white" />
+                  <QueueListIcon className="w-6 h-6 text-white hover:text-gray-300 active:text-gray-200" />
                   <span className="text-sm text-gray-400">Danh sách</span>
                 </div>
               </div>
@@ -310,12 +309,10 @@ export const CollectionDetail: React.FC = () => {
             <table className="w-full text-left">
               <thead className="border-b border-gray-600">
                 <tr>
-                  <th className="py-2 px-4 text-gray-300 w-16">#</th>
                   <th className="py-2 px-4 text-gray-300">Tiêu đề</th>
                   <th className="py-2 px-4 text-gray-300">Album</th>
-                  <th className="py-2 px-4 text-gray-300">Lượt nghe</th>
                   <th className="py-2 px-4 text-gray-300 w-24">
-                    <Clock className="inline-block w-5 h-5" />
+                    <ClockIcon className="inline-block w-5 h-5" />
                   </th>
                   <th className="py-2 px-4 text-gray-300 w-16">Hành động</th>
                 </tr>
@@ -324,41 +321,61 @@ export const CollectionDetail: React.FC = () => {
                 {songs.map((song, index) => (
                   <tr
                     key={song.song_id}
-                    className="hover:bg-zinc-800 rounded-lg cursor-pointer"
+                    className="hover:bg-zinc-800 rounded-lg cursor-pointer group"
                     onMouseEnter={() => setHoveredSongId(song.song_id)}
                     onMouseLeave={() => setHoveredSongId(null)}
                   >
-                    <td className="py-2 px-4 text-gray-400">
-                      {hoveredSongId === song.song_id ? (
-                        <button onClick={(e) => handleSongClick(song, index, e)}>
-                          <Play className="w-5 h-5" />
-                        </button>
-                      ) : (
-                        index + 1
-                      )}
-                    </td>
                     <td className="py-2 px-4">
                       <div className="flex items-center">
-                        <img
-                          src={song.img}
-                          alt={song.title}
-                          className="w-12 h-12 object-cover mr-4 rounded"
-                        />
+                        <div className="relative w-12 h-12 mr-4">
+                          <img
+                            src={song.img}
+                            alt={song.title}
+                            className={`w-12 h-12 object-cover rounded transition-opacity duration-200 ${
+                              hoveredSongId === song.song_id ? 'opacity-75' : 'opacity-100'
+                            }`}
+                          />
+                          <div
+                            className={`absolute inset-0 flex items-center justify-center transition-opacity duration-200 ${
+                              hoveredSongId === song.song_id ? 'opacity-100' : 'opacity-0'
+                            }`}
+                          >
+                            <button onClick={(e) => handleSongClick(song, index, e)}>
+                              <PlayIcon className="w-6 h-6 text-white hover:text-gray-300 active:text-gray-200" />
+                            </button>
+                          </div>
+                        </div>
                         <div className="flex flex-col">
                           <span className="text-white">{song.title}</span>
-                          {song.feat_artists.length > 0 && (
-                            <span className="text-gray-400 text-sm block">
-                              feat. {song.feat_artists.join(', ')}
-                            </span>
-                          )}
+                          <div className="text-gray-400 text-sm block">
+                            <Link
+                              to={`/artists/${song.artist_id}`}
+                              className="hover:underline"
+                            >
+                              {song.artist_name}
+                            </Link>
+                            {song.feat_artists.length > 0 && (
+                              <span>
+                                {' '}feat.{' '}
+                                {song.feat_artists.map((featArtist, idx) => (
+                                  <span key={featArtist.artist_id}>
+                                    <Link
+                                      to={`/artists/${featArtist.artist_id}`}
+                                      className="hover:underline"
+                                    >
+                                      {featArtist.stage_name}
+                                    </Link>
+                                    {idx < song.feat_artists.length - 1 ? ', ' : ''}
+                                  </span>
+                                ))}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </td>
                     <td className="py-2 px-4 text-gray-400">
                       {song.album_name || 'Đang cập nhật'}
-                    </td>
-                    <td className="py-2 px-4 text-gray-400">
-                      {song.listen_count || 'Đang cập nhật'}
                     </td>
                     <td className="py-2 px-4 text-gray-400">
                       {formatDuration(song.duration)}
@@ -367,7 +384,7 @@ export const CollectionDetail: React.FC = () => {
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <button>
-                            <MoreHorizontal className="w-5 h-5" />
+                            <EllipsisHorizontalIcon className="w-5 h-5 hover:text-gray-300 active:text-gray-200" />
                           </button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent className="z-50">

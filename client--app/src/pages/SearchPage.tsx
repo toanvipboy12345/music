@@ -7,7 +7,7 @@ import api from '../services/api';
 import { Button } from '../components/ui/button';
 import Skeleton from 'react-loading-skeleton';
 import 'react-loading-skeleton/dist/skeleton.css';
-import { Play, MoreHorizontal } from 'react-feather';
+import { PlayIcon, EllipsisHorizontalIcon } from '@heroicons/react/24/solid';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useAudio } from '../context/AudioContext';
@@ -22,7 +22,7 @@ interface Song {
   img: string;
   artist_id: number;
   artist_name: string;
-  feat_artists: string[];
+  feat_artists: { artist_id: number; stage_name: string }[];
   album_name: string | null;
   release_date?: string;
   is_downloadable?: boolean;
@@ -111,7 +111,6 @@ const SearchPage: React.FC = () => {
           }
         }, 1000);
       } else {
-        setLoading(false);
         try {
           console.log('Fetching search results for query:', query);
           const response = await api.get('/public/search', {
@@ -200,7 +199,13 @@ const SearchPage: React.FC = () => {
     }
     try {
       console.log('Handling song click:', { song_id: song.song_id, title: song.title });
-      await addToQueue(song, true); // Phát ngay bài hát
+      // Convert Song to QueueItem for addToQueue
+      const queueItem: QueueItem = {
+        ...song,
+        position: index + 1,
+        is_current: true,
+      };
+      await addToQueue(queueItem, true); // Phát ngay bài hát
       const queueItems: QueueItem[] = (searchResults?.songs.items || []).map((s, i) => ({
         ...s,
         position: i + 1,
@@ -216,7 +221,7 @@ const SearchPage: React.FC = () => {
     }
   };
 
-  // Xử lý thêm vào danhdensity chờ
+  // Xử lý thêm vào danh sách chờ
   const handleAddToQueueClick = async (song: Song, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!isAuthenticated || !userId) {
@@ -231,7 +236,13 @@ const SearchPage: React.FC = () => {
     }
     try {
       console.log('Adding song to queue:', song.song_id, song.title);
-      await addToQueue(song, false); // Thêm vào cuối queue
+      // Convert Song to QueueItem for addToQueue
+      const queueItem: QueueItem = {
+        ...song,
+        position: (searchResults?.songs.items.length || 0) + 1,
+        is_current: false,
+      };
+      await addToQueue(queueItem, false); // Thêm vào cuối queue
       toast.success('Đã thêm bài hát vào danh sách chờ', {
         style: { background: 'black', color: 'white' },
       });
@@ -253,7 +264,7 @@ const SearchPage: React.FC = () => {
 
   // Xử lý nhấp vào ca sĩ
   const handleArtistClick = (artist: Artist) => {
-    navigate(`/artists/${artist.artist_id}/detail`);
+    navigate(`/artists/${artist.artist_id}`);
   };
 
   // Xử lý nhấp vào album
@@ -357,31 +368,60 @@ const SearchPage: React.FC = () => {
                     onMouseLeave={() => setHoveredSongId(null)}
                     onClick={() => handleSongClick(song)}
                   >
-                    <div className="w-12 flex-shrink-0 flex items-center justify-center">
-                      {hoveredSongId === song.song_id ? (
-                        <button onClick={(e) => handlePlaySong(song, index, e)}>
-                          <Play className="text-white" size={24} />
-                        </button>
+                    <div className="relative w-12 h-12 flex-shrink-0 mr-4">
+                      {song.img ? (
+                        <>
+                          <img
+                            src={song.img || 'https://via.placeholder.com/40'}
+                            alt={song.title}
+                            className={`w-12 h-12 rounded object-cover transition-opacity duration-200 ${
+                              hoveredSongId === song.song_id ? 'opacity-75' : 'opacity-100'
+                            }`}
+                            loading="lazy"
+                          />
+                          <div
+                            className={`absolute inset-0 flex items-center justify-center transition-opacity duration-200 ${
+                              hoveredSongId === song.song_id ? 'opacity-100' : 'opacity-0'
+                            }`}
+                          >
+                            <button onClick={(e) => handlePlaySong(song, index, e)}>
+                              <PlayIcon className="w-5 h-5 sm:w-6 sm:h-6 text-white hover:text-gray-300 active:text-gray-200" />
+                            </button>
+                          </div>
+                        </>
                       ) : (
-                        <span className="text-gray-400">{index + 1}</span>
+                        <div className="w-12 h-12 bg-neutral-700 flex items-center justify-center rounded">
+                          <span className="text-neutral-400 text-xs">No Image</span>
+                        </div>
                       )}
                     </div>
-                    <img
-                      src={song.img || 'https://via.placeholder.com/40'}
-                      alt={song.title}
-                      className="w-12 h-12 rounded mr-4"
-                    />
                     <div className="flex-1">
                       <span className="text-white font-medium">{song.title}</span>
                       <p className="text-sm text-gray-400">
                         <Link
-                          to={`/artists/${song.artist_id}/detail`}
+                          to={`/artists/${song.artist_id}`}
                           className="hover:underline"
                           onClick={(e) => e.stopPropagation()}
                         >
                           {song.artist_name}
                         </Link>
-                        {song.feat_artists.length > 0 && `, feat. ${song.feat_artists.join(', ')}`}
+                        {song.feat_artists.length > 0 && (
+                          <span>
+                            {' '}feat.{' '}
+                            {song.feat_artists.map((featArtist, idx) => (
+                              <span key={featArtist.artist_id}>
+                                <Link
+                                  to={`/artists/${featArtist.artist_id}`}
+                                  className="hover:underline"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  {featArtist.stage_name}
+                                </Link>
+                                {idx < song.feat_artists.length - 1 ? ', ' : ''}
+                              </span>
+                            ))}
+                          </span>
+                        )}
                         {song.album_name && <span> - {song.album_name}</span>}
                       </p>
                     </div>
@@ -389,7 +429,7 @@ const SearchPage: React.FC = () => {
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <button className="ml-4">
-                          <MoreHorizontal className="w-5 h-5 text-gray-400" />
+                          <EllipsisHorizontalIcon className="w-5 h-5 text-gray-400 hover:text-gray-300 active:text-gray-200" />
                         </button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent className="z-50 bg-neutral-900 border border-gray-700 text-white">

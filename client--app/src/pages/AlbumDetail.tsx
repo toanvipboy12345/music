@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Skeleton from 'react-loading-skeleton';
 import 'react-loading-skeleton/dist/skeleton.css';
-import { Clock, Play, Download, MoreHorizontal, List } from 'react-feather';
+import { PlayIcon, ArrowDownTrayIcon, EllipsisHorizontalIcon, QueueListIcon, ClockIcon } from '@heroicons/react/24/solid';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Toaster, toast } from "sonner";
@@ -20,7 +20,7 @@ interface Song {
   img: string;
   artist_id: number;
   artist_name: string;
-  feat_artists: string[];
+  feat_artists: { artist_id: number; stage_name: string }[];
   album_name: string | null;
   is_downloadable: boolean;
   created_at: string;
@@ -80,7 +80,6 @@ export const AlbumDetail: React.FC = () => {
   const { addToQueue, setPlaylist, setCurrentSongIndex, setArtistName, playContent } = useAudio();
   const { isAuthenticated, userId, token } = useAuth();
 
-  // Function to generate random gradient
   const generateRandomGradient = () => {
     const colors = [
       'purple-600', 'blue-600', 'red-600', 'green-600', 'pink-600',
@@ -178,7 +177,7 @@ export const AlbumDetail: React.FC = () => {
   const handleSongClick = async (song: Song, index: number, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!isAuthenticated || !userId) {
-      toast.error('Vui lòng đăng nhập để phát bài hát', {
+      toast.error('Vui lòng đăng nhập để phát bài hat', {
         action: {
           label: 'Đăng nhập',
           onClick: () => navigate('/login'),
@@ -272,8 +271,8 @@ export const AlbumDetail: React.FC = () => {
     navigate(`/albums/${album.album_id}`);
   };
 
-  if (error) return <div className="text-red-500 text-center">{error}</div>;
-  if (!album) return <div className="text-center">Không tìm thấy album</div>;
+  if (error) return <div className="text-red-500 text-center p-4">Lỗi: {error}</div>;
+  if (!album) return <div className="text-center p-4">Không tìm thấy album</div>;
 
   const { title, img, artist_name, release_date, song_count, total_duration, songs, related_albums } = album;
 
@@ -283,7 +282,7 @@ export const AlbumDetail: React.FC = () => {
       {loading ? (
         <div className="space-y-4">
           <Skeleton height={200} className="w-full rounded-lg" />
-          <Skeleton height={40} className="w-1/2" />
+          <Skeleton height={40} className="w-full sm:w-1/2" />
           <div className="space-y-2">
             {[...Array(3)].map((_, index) => (
               <Skeleton key={index} height={50} className="w-full" />
@@ -292,160 +291,153 @@ export const AlbumDetail: React.FC = () => {
         </div>
       ) : (
         <div>
-          <div className={`${gradient} h-64 mb-4 rounded-t-lg`}>
-            <div className="flex flex-col h-full">
-              <div className="flex gap-4 items-center justify-start flex-1 py-4 px-8">
-                <div>
-                  <div className="flex flex-col justify-start items-center">
-                    {img ? (
-                      <img
-                        src={img}
-                        alt={title}
-                        className="w-52 h-52 object-cover rounded-sm"
-                      />
-                    ) : (
-                      <div className="w-52 h-52 bg-neutral-700 flex items-center justify-center rounded-sm">
-                        <span className="text-neutral-400">No Image</span>
-                      </div>
-                    )}
+          <div className={`${gradient} h-auto sm:h-64 mb-4 rounded-t-lg flex flex-col`}>
+            <div className="flex flex-col sm:flex-row gap-4 items-center justify-start flex-1 py-4 px-4 sm:px-8">
+              <div className="flex-shrink-0">
+                {img ? (
+                  <img
+                    src={img}
+                    alt={title}
+                    className="w-40 h-40 sm:w-52 sm:h-52 object-cover rounded-sm"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="w-40 h-40 sm:w-52 sm:h-52 bg-neutral-700 flex items-center justify-center rounded-sm">
+                    <span className="text-neutral-400 text-sm">No Image</span>
                   </div>
-                </div>
-                <div className="h-auto text-start ml-1.5">
-                  <h2 className="text-sm text-white">Album</h2>
-                  <h1 className="text-8xl font-bold uppercase">{title}</h1>
-                  <p className="text-sm text-gray-400">
-                    {artist_name} • {release_date.split('-')[0]} • {song_count} bài hát • {formatDuration(total_duration)}
-                  </p>
-                </div>
+                )}
               </div>
-              <div className="py-2 px-7 flex items-center justify-between mb-4">
-                <div className="flex items-center space-x-4">
-                  <button onClick={handlePlayContent}>
-                    <Play className="w-6 h-6 text-white" />
-                  </button>
-                  <Download className="w-6 h-6 text-white" />
-                  <MoreHorizontal className="w-6 h-6 text-white" />
-                </div>
-                <div className="flex items-center space-x-2">
-                  <List className="w-6 h-6 text-white" />
-                  <span className="text-sm text-gray-400">Danh sách bài hát</span>
-                </div>
+              <div className="text-center sm:text-start mt-2 sm:mt-0">
+                <h2 className="text-xs sm:text-sm text-white">Album</h2>
+                <h1 className="text-4xl sm:text-6xl md:text-8xl font-bold uppercase line-clamp-2">{title}</h1>
+                <p className="text-xs sm:text-sm text-gray-400 mt-2">
+                  {artist_name} • {release_date.split('-')[0]} • {song_count} bài hát • {formatDuration(total_duration)}
+                </p>
+              </div>
+            </div>
+            <div className="py-2 px-4 sm:px-7 flex flex-col sm:flex-row items-center justify-between mb-4 space-y-2 sm:space-y-0">
+              <div className="flex items-center space-x-4">
+                <button onClick={handlePlayContent} className="hover:text-gray-300 active:text-gray-200">
+                  <PlayIcon className="w-6 h-6 text-white" />
+                </button>
+                <ArrowDownTrayIcon className="w-6 h-6 text-white hover:text-gray-300 active:text-gray-200" />
+                <EllipsisHorizontalIcon className="w-6 h-6 text-white hover:text-gray-300 active:text-gray-200" />
+              </div>
+              <div className="flex items-center space-x-2">
+                <QueueListIcon className="w-6 h-6 text-white hover:text-gray-300 active:text-gray-200" />
+                <span className="text-xs sm:text-sm text-gray-400">Danh sách bài hát</span>
               </div>
             </div>
           </div>
-          <div className="p-4 pt-8">
-            <table className="w-full text-left">
-              <thead className="border-b border-gray-600">
-                <tr>
-                  <th className="py-2 px-4 text-gray-300 w-16">#</th>
-                  <th className="py-2 px-4 text-gray-300">Tiêu đề</th>
-                  <th className="py-2 px-4 text-gray-300">Album</th>
-                  <th className="py-2 px-4 text-gray-300">Lượt nghe</th>
-                  <th className="py-2 px-4 text-gray-300 w-24">
-                    <Clock className="inline-block w-5 h-5" />
-                  </th>
-                  <th className="py-2 px-4 text-gray-300 w-16">Hành động</th>
-                </tr>
-              </thead>
-              <tbody>
-                {songs.map((song, index) => (
-                  <tr
-                    key={song.song_id}
-                    className="hover:bg-zinc-800 rounded-lg cursor-pointer"
-                    onMouseEnter={() => setHoveredSongId(song.song_id)}
-                    onMouseLeave={() => setHoveredSongId(null)}
-                    onClick={(e) => handleSongClick(song, index, e)}
-                  >
-                    <td className="py-2 px-4 text-gray-400">
-                      {hoveredSongId === song.song_id ? (
-                        <button onClick={(e) => handleSongClick(song, index, e)}>
-                          <Play className="w-5 h-5" />
-                        </button>
-                      ) : (
-                        index + 1
-                      )}
-                    </td>
-                    <td className="py-2 px-4">
-                      <div className="flex items-center">
-                        {song.img ? (
-                          <img
-                            src={song.img}
-                            alt={song.title}
-                            className="w-12 h-12 object-cover mr-4 rounded"
-                          />
-                        ) : (
-                          <div className="w-12 h-12 bg-neutral-700 flex items-center justify-center mr-4 rounded">
-                            <span className="text-neutral-400 text-xs">No Image</span>
-                          </div>
-                        )}
-                        <div className="flex flex-col">
-                          <span className="text-white">{song.title}</span>
-                          <span className="text-gray-400 text-sm">
-                            {song.artist_name}
-                            {song.feat_artists.length > 0 && (
-                              <span> feat. {song.feat_artists.join(', ')}</span>
+          <div className="p-4 sm:p-6">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+
+                <tbody>
+                  {songs.map((song, index) => (
+                    <tr
+                      key={song.song_id}
+                      className="hover:bg-zinc-800 rounded-lg cursor-pointer group"
+                      onMouseEnter={() => setHoveredSongId(song.song_id)}
+                      onMouseLeave={() => setHoveredSongId(null)}
+                    >
+                      <td className="py-2 px-2 sm:px-4">
+                        <div className="flex items-center">
+                          <div className="relative w-10 h-10 sm:w-12 sm:h-12 mr-2 sm:mr-4">
+                            {song.img ? (
+                              <img
+                                src={song.img}
+                                alt={song.title}
+                                className={`w-full h-full object-cover rounded transition-opacity duration-200 ${
+                                  hoveredSongId === song.song_id ? 'opacity-75' : 'opacity-100'
+                                }`}
+                                loading="lazy"
+                              />
+                            ) : (
+                              <div className="w-full h-full bg-neutral-700 flex items-center justify-center rounded">
+                                <span className="text-neutral-400 text-xs">No Image</span>
+                              </div>
                             )}
-                          </span>
+                            <div
+                              className={`absolute inset-0 flex items-center justify-center transition-opacity duration-200 ${
+                                hoveredSongId === song.song_id ? 'opacity-100' : 'opacity-0'
+                              }`}
+                            >
+                              <button onClick={(e) => handleSongClick(song, index, e)}>
+                                <PlayIcon className="w-6 h-6 text-white hover:text-gray-300 active:text-gray-200" />
+                              </button>
+                            </div>
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-white text-sm sm:text-base">{song.title}</span>
+                            <span className="text-gray-400 text-xs sm:text-sm">
+                              {song.artist_name}
+                              {song.feat_artists.length > 0 && (
+                                <span> feat. {song.feat_artists.map(artist => artist.stage_name).join(', ')}</span>
+                              )}
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                    </td>
-                    <td className="py-2 px-4 text-gray-400">
-                      {song.album_name || 'Đang cập nhật'}
-                    </td>
-                    <td className="py-2 px-4 text-gray-400">
-                      {song.listen_count || 'Đang cập nhật'}
-                    </td>
-                    <td className="py-2 px-4 text-gray-400">
-                      {formatDuration(song.duration)}
-                    </td>
-                    <td className="py-2 px-4 text-gray-400">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button>
-                            <MoreHorizontal className="w-5 h-5" />
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent className="z-50 bg-neutral-800 text-white border-neutral-700">
-                          <DropdownMenuItem onClick={(e) => handleSongClick(song, index, e)}>
-                            Phát bài hát
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={(e) => handleAddToQueueClick(song, e)}>
-                            Thêm vào danh sách chờ
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={(e) => handleAddToPlaylistClick(song.song_id, e)}>
-                            Thêm vào playlist
-                          </DropdownMenuItem>
-                          {song.is_downloadable && (
-                            <DropdownMenuItem>
-                              <a href={song.audio_file_url} download>
-                                Tải xuống
-                              </a>
+                      </td>
+                      <td className="py-2 px-2 sm:px-4 text-gray-400 hidden sm:table-cell">
+                        {song.album_name || 'Đang cập nhật'}
+                      </td>
+                      <td className="py-2 px-2 sm:px-4 text-gray-400 hidden md:table-cell">
+                        {song.listen_count || 'Đang cập nhật'}
+                      </td>
+                      <td className="py-2 px-2 sm:px-4 text-gray-400">
+                        {formatDuration(song.duration)}
+                      </td>
+                      <td className="py-2 px-2 sm:px-4 text-gray-400">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button>
+                              <EllipsisHorizontalIcon className="w-4 sm:w-5 h-4 sm:h-5 hover:text-gray-300 active:text-gray-200" />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent className="z-50 bg-neutral-800 text-white border-neutral-700">
+                            <DropdownMenuItem onClick={(e) => handleSongClick(song, index, e)}>
+                              Phát bài hát
                             </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                            <DropdownMenuItem onClick={(e) => handleAddToQueueClick(song, e)}>
+                              Thêm vào danh sách chờ
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={(e) => handleAddToPlaylistClick(song.song_id, e)}>
+                              Thêm vào playlist
+                            </DropdownMenuItem>
+                            {song.is_downloadable && (
+                              <DropdownMenuItem>
+                                <a href={song.audio_file_url} download>
+                                  Tải xuống
+                                </a>
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
             {related_albums.length > 0 && (
               <div className="mt-8">
-                <h2 className="text-2xl font-semibold mb-3">Album khác của {artist_name}</h2>
+                <h2 className="text-xl sm:text-2xl font-semibold mb-3">Album khác của {artist_name}</h2>
                 <div className="flex flex-wrap gap-2">
                   {related_albums.map((relatedAlbum) => (
                     <div
                       key={relatedAlbum.album_id}
-                      className="flex flex-col items-center p-2 hover:bg-neutral-800 rounded-lg cursor-pointer transition-colors mr-0"
+                      className="flex flex-col items-center p-2 hover:bg-neutral-800 rounded-lg cursor-pointer transition-colors"
                       onClick={() => handleRelatedAlbumClick(relatedAlbum)}
                     >
                       <img
                         src={relatedAlbum.img || 'https://via.placeholder.com/144'}
                         alt={relatedAlbum.title}
-                        className="w-36 h-36 rounded mb-2 object-cover"
+                        className="w-32 h-32 sm:w-36 sm:h-36 rounded mb-2 object-cover"
+                        loading="lazy"
                       />
                       <div className="text-center">
-                        <span className="text-white font-medium text-sm w-36 line-clamp-2">
+                        <span className="text-white font-medium text-sm sm:text-base w-full line-clamp-2">
                           {relatedAlbum.title}
                         </span>
                         <span className="text-gray-400 text-xs">
@@ -459,7 +451,7 @@ export const AlbumDetail: React.FC = () => {
             )}
           </div>
           <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-            <DialogContent variant="dark" className="sm:max-w-[600px]">
+            <DialogContent variant="dark" className="max-w-[90vw] sm:max-w-[600px]">
               <DialogHeader>
                 <DialogTitle>Chọn Playlist</DialogTitle>
               </DialogHeader>
@@ -474,24 +466,25 @@ export const AlbumDetail: React.FC = () => {
                       onClick={() => handleAddSongToPlaylist(playlist.playlist_id)}
                       className="bg-neutral-900 hover:bg-neutral-800 transition-colors duration-200 rounded-lg p-4 flex items-center gap-4 border border-gray-700 hover:border-gray-600"
                     >
-                      <div className="w-16 h-16 flex-shrink-0">
+                      <div className="w-12 h-12 sm:w-16 sm:h-16 flex-shrink-0">
                         {playlist.img ? (
                           <img
                             src={playlist.img}
                             alt={playlist.title}
-                            className="w-16 h-16 object-cover rounded-lg"
+                            className="w-full h-full object-cover rounded-lg"
+                            loading="lazy"
                           />
                         ) : (
-                          <div className="w-16 h-16 bg-gray-700 flex items-center justify-center rounded-lg">
+                          <div className="w-full h-full bg-gray-700 flex items-center justify-center rounded-lg">
                             <span className="text-xs text-gray-400">No Image</span>
                           </div>
                         )}
                       </div>
-                      <span className="text-white text-lg font-semibold truncate flex-1">{playlist.title}</span>
+                      <span className="text-white text-base sm:text-lg font-semibold truncate flex-1">{playlist.title}</span>
                     </button>
                   ))
                 ) : (
-                  <div className="text-center text-gray-400 col-span-2">
+                  <div className="text-center text-gray-400 col-span-1 sm:col-span-2">
                     <p>Không có playlist nào. Vui lòng tạo playlist trong phần quản lý để sử dụng chức năng này.</p>
                   </div>
                 )}
