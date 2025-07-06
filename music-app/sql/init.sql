@@ -2,8 +2,7 @@ CREATE DATABASE IF NOT EXISTS music_app;
 USE music_app;
 
 -- Xóa bảng cũ để tránh lỗi
-DROP TABLE IF EXISTS Songs, Albums, Artists, Genres, Users;
-
+DROP TABLE IF EXISTS Queue, PlaylistSongs, Playlists, Songs, Albums, Artists, Genres, Users;
 CREATE TABLE Users (
     user_id INT PRIMARY KEY AUTO_INCREMENT,
     username VARCHAR(50) NOT NULL UNIQUE,
@@ -27,8 +26,12 @@ CREATE TABLE Artists (
     stage_name VARCHAR(100) NOT NULL UNIQUE,
     popularity INT,
     profile_picture VARCHAR(255),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    bio TEXT, -- Thêm trường bio
+    follower INT NOT NULL DEFAULT 0, -- Thêm trường follower, mặc định là 0
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT check_follower CHECK (follower >= 0) -- Ràng buộc follower không âm
 );
+
 
 CREATE TABLE Albums (
     album_id INT PRIMARY KEY AUTO_INCREMENT,
@@ -65,15 +68,17 @@ CREATE TABLE Songs (
     ),
     CONSTRAINT check_listen_count CHECK (listen_count >= 0) -- Ràng buộc cho listen_count
 );
--- Tạo bảng Playlists
-CREATE TABLE IF NOT EXISTS Playlists (
-  playlist_id INT AUTO_INCREMENT PRIMARY KEY,
-  title VARCHAR(100) NOT NULL,
-  user_id INT NOT NULL,
-  img VARCHAR(255),
-  description TEXT,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (user_id) REFERENCES Users(user_id)
+CREATE TABLE Playlists (
+    playlist_id INT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(100) NOT NULL,
+    user_id INT NOT NULL,
+    img VARCHAR(255),
+    description TEXT,
+    is_public BOOLEAN NOT NULL DEFAULT TRUE,
+    like_count INT NOT NULL DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES Users(user_id),
+    CONSTRAINT check_like_count CHECK (like_count >= 0)
 );
 
 -- Tạo bảng trung gian PlaylistSongs
