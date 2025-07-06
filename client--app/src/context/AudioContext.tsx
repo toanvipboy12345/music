@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import api from '../services/api';
 import { toast } from 'sonner';
@@ -11,7 +12,7 @@ interface Song {
   img: string;
   artist_id: number;
   artist_name: string;
-  feat_artists: string[];
+  feat_artists: { artist_id: number; stage_name: string }[];
   album_name: string | null;
   release_date?: string;
   is_downloadable?: boolean;
