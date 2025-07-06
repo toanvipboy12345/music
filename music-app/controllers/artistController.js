@@ -5,11 +5,16 @@ const { Artist, Song, Album } = require('../models'); // Nhập từ models/inde
 exports.createArtist = async (req, res) => {
   console.log('POST /artists called with body:', req.body);
   try {
-    const { stage_name } = req.body;
+    const { stage_name, bio } = req.body;
 
+    // Kiểm tra stage_name và bio
     if (!stage_name || typeof stage_name !== 'string' || stage_name.length < 1) {
       console.log('Validation failed:', { stage_name });
       return res.status(400).json({ message: 'Tên ca sĩ không hợp lệ' });
+    }
+    if (bio && (typeof bio !== 'string' || bio.length > 5000)) {
+      console.log('Validation failed:', { bio });
+      return res.status(400).json({ message: 'Tiểu sử không hợp lệ (tối đa 5000 ký tự)' });
     }
 
     const existingArtist = await Artist.findOne({ where: { stage_name } });
@@ -62,11 +67,15 @@ exports.createArtist = async (req, res) => {
       stage_name: spotifyArtist.name,
       popularity: spotifyArtist.popularity,
       profile_picture: spotifyArtist.images[0]?.url || null,
+      bio: bio || null,
+      follower: 0,
     });
     const artist = await Artist.create({
       stage_name: spotifyArtist.name,
       popularity: spotifyArtist.popularity,
       profile_picture: spotifyArtist.images[0]?.url || null,
+      bio: bio || null,
+      follower: 0,
     });
 
     res.status(201).json({
@@ -76,6 +85,8 @@ exports.createArtist = async (req, res) => {
         stage_name: artist.stage_name,
         popularity: artist.popularity,
         profile_picture: artist.profile_picture,
+        bio: artist.bio,
+        follower: artist.follower,
       },
     });
   } catch (error) {
@@ -146,6 +157,7 @@ exports.searchArtistsByName = async (req, res) => {
     res.status(500).json({ message: 'Lỗi server', error: error.message });
   }
 };
+
 exports.getArtistDetail = async (req, res) => {
   console.log('GET /artists/:id/detail called with params:', req.params);
   try {
@@ -158,7 +170,7 @@ exports.getArtistDetail = async (req, res) => {
 
     // Tìm nghệ sĩ
     const artist = await Artist.findByPk(id, {
-      attributes: ['artist_id', 'stage_name', 'profile_picture'],
+      attributes: ['artist_id', 'stage_name', 'profile_picture', 'bio', 'follower'],
     });
 
     if (!artist) {
@@ -291,7 +303,7 @@ exports.getArtistDetail = async (req, res) => {
     const processedAlbums = albums.map(album => ({
       album_id: album.album_id,
       title: album.title,
-      img: album.img ? `${baseUrl}${album.img}` : null, // Áp dụng baseUrl cho ảnh album
+      img: album.img ? `${baseUrl}${album.img}` : null,
     }));
 
     res.json({
@@ -299,7 +311,9 @@ exports.getArtistDetail = async (req, res) => {
       artist: {
         artist_id: artist.artist_id,
         stage_name: artist.stage_name,
-        profile_picture: artist.profile_picture, // Không áp dụng baseUrl
+        profile_picture: artist.profile_picture,
+        bio: artist.bio,
+        follower: artist.follower,
         total_listen_count: totalListenCount,
         albums: processedAlbums,
         songs: processedSongs,
@@ -310,4 +324,213 @@ exports.getArtistDetail = async (req, res) => {
     res.status(500).json({ message: 'Lỗi server', error: error.message });
   }
 };
+
+exports.updateArtistBio = async (req, res) => {
+  console.log('PUT /artists/:id/bio called with body:', req.body, 'and params:', req.params);
+  try {
+    const { id } = req.params;
+    const { bio } = req.body;
+
+    // Kiểm tra id và bio
+    if (!id || isNaN(parseInt(id))) {
+      console.log('Invalid artist_id:', id);
+      return res.status(400).json({ message: 'ID ca sĩ không hợp lệ' });
+    }
+    if (bio !== undefined && (typeof bio !== 'string' || bio.length > 5000)) {
+      console.log('Validation failed:', { bio });
+      return res.status(400).json({ message: 'Tiểu sử không hợp lệ (tối đa 5000 ký tự)' });
+    }
+
+    // Tìm nghệ sĩ
+    const artist = await Artist.findByPk(id);
+    if (!artist) {
+      console.log('Artist not found:', id);
+      return res.status(404).json({ message: 'Ca sĩ không tồn tại' });
+    }
+
+    // Cập nhật bio
+    await artist.update({ bio: bio || null });
+    console.log('Artist bio updated:', { artist_id: id, bio: artist.bio });
+
+    res.status(200).json({
+      message: 'Cập nhật tiểu sử ca sĩ thành công',
+      artist: {
+        artist_id: artist.artist_id,
+        stage_name: artist.stage_name,
+        profile_picture: artist.profile_picture,
+        bio: artist.bio,
+        follower: artist.follower,
+      },
+    });
+  } catch (error) {
+    console.error('Update artist bio error:', error.message, error.stack);
+    res.status(500).json({ message: 'Lỗi server', error: error.message });
+  }
+};
+
+exports.syncAllArtistsFromSpotify = async (req, res) => {
+  console.log('POST /artists/sync called');
+  try {
+    const clientId = process.env.SPOTIFY_CLIENT_ID;
+    const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
+    console.log('Spotify credentials:', { clientId, clientSecret });
+    const auth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+    let accessToken;
+
+    // Lấy token Spotify
+    try {
+      console.log('Requesting Spotify token...');
+      const tokenResponse = await axios.post(
+        'https://accounts.spotify.com/api/token',
+        'grant_type=client_credentials',
+        {
+          headers: {
+            Authorization: `Basic ${auth}`,
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+        }
+      );
+      accessToken = tokenResponse.data.access_token;
+      console.log('Spotify token received:', accessToken ? 'Success' : 'Failed');
+    } catch (err) {
+      console.error('Spotify token error:', err.response?.data || err.message);
+      return res.status(500).json({ message: 'Lỗi khi lấy token Spotify', error: err.message });
+    }
+
+    // Lấy tất cả ca sĩ từ database
+    const artists = await Artist.findAll({
+      attributes: ['artist_id', 'stage_name'],
+    });
+    console.log('Total artists to sync:', artists.length);
+
+    const updatedArtists = [];
+    const failedArtists = [];
+
+    // Đồng bộ từng ca sĩ
+    for (const artist of artists) {
+      try {
+        console.log('Syncing artist:', artist.stage_name);
+        const searchResponse = await axios.get(
+          `https://api.spotify.com/v1/search?q=${encodeURIComponent(artist.stage_name)}&type=artist&limit=1`,
+          {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          }
+        );
+        const spotifyArtist = searchResponse.data.artists.items[0];
+
+        if (spotifyArtist && spotifyArtist.name.toLowerCase() === artist.stage_name.toLowerCase()) {
+          await artist.update({
+            popularity: spotifyArtist.popularity,
+            profile_picture: spotifyArtist.images[0]?.url || null,
+          });
+          updatedArtists.push(artist.stage_name);
+          console.log('Updated artist:', artist.stage_name);
+        } else {
+          console.log('Artist not found on Spotify:', artist.stage_name);
+          failedArtists.push(artist.stage_name);
+        }
+      } catch (error) {
+        console.error(`Error syncing artist ${artist.stage_name}:`, error.message);
+        failedArtists.push(artist.stage_name);
+      }
+    }
+
+    res.status(200).json({
+      message: 'Đồng bộ tất cả ca sĩ thành công',
+      updated: updatedArtists,
+      failed: failedArtists,
+      total_updated: updatedArtists.length,
+      total_failed: failedArtists.length,
+    });
+  } catch (error) {
+    console.error('Sync all artists error:', error.message, error.stack);
+    res.status(500).json({ message: 'Lỗi server', error: error.message });
+  }
+};
+
+exports.syncArtistFromSpotify = async (req, res) => {
+  console.log('POST /artists/:id/sync called with params:', req.params);
+  try {
+    const { id } = req.params;
+
+    // Kiểm tra id
+    if (!id || isNaN(parseInt(id))) {
+      console.log('Invalid artist_id:', id);
+      return res.status(400).json({ message: 'ID ca sĩ không hợp lệ' });
+    }
+
+    // Tìm nghệ sĩ
+    const artist = await Artist.findByPk(id, {
+      attributes: ['artist_id', 'stage_name', 'popularity', 'profile_picture', 'bio', 'follower'],
+    });
+    if (!artist) {
+      console.log('Artist not found:', id);
+      return res.status(404).json({ message: 'Ca sĩ không tồn tại' });
+    }
+
+    const clientId = process.env.SPOTIFY_CLIENT_ID;
+    const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
+    console.log('Spotify credentials:', { clientId, clientSecret });
+    const auth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+    let accessToken;
+
+    // Lấy token Spotify
+    try {
+      console.log('Requesting Spotify token...');
+      const tokenResponse = await axios.post(
+        'https://accounts.spotify.com/api/token',
+        'grant_type=client_credentials',
+        {
+          headers: {
+            Authorization: `Basic ${auth}`,
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+        }
+      );
+      accessToken = tokenResponse.data.access_token;
+      console.log('Spotify token received:', accessToken ? 'Success' : 'Failed');
+    } catch (err) {
+      console.error('Spotify token error:', err.response?.data || err.message);
+      return res.status(500).json({ message: 'Lỗi khi lấy token Spotify', error: err.message });
+    }
+
+    // Tìm ca sĩ trên Spotify
+    console.log('Searching Spotify for artist:', artist.stage_name);
+    const searchResponse = await axios.get(
+      `https://api.spotify.com/v1/search?q=${encodeURIComponent(artist.stage_name)}&type=artist&limit=1`,
+      {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      }
+    );
+    const spotifyArtist = searchResponse.data.artists.items[0];
+
+    if (!spotifyArtist || spotifyArtist.name.toLowerCase() !== artist.stage_name.toLowerCase()) {
+      console.log('Artist not found on Spotify:', artist.stage_name);
+      return res.status(404).json({ message: `Không tìm thấy ca sĩ ${artist.stage_name} trên Spotify` });
+    }
+
+    // Cập nhật thông tin ca sĩ
+    await artist.update({
+      popularity: spotifyArtist.popularity,
+      profile_picture: spotifyArtist.images[0]?.url || null,
+    });
+    console.log('Artist synced:', artist.stage_name);
+
+    res.status(200).json({
+      message: 'Đồng bộ ca sĩ thành công',
+      artist: {
+        artist_id: artist.artist_id,
+        stage_name: artist.stage_name,
+        popularity: artist.popularity,
+        profile_picture: artist.profile_picture,
+        bio: artist.bio,
+        follower: artist.follower,
+      },
+    });
+  } catch (error) {
+    console.error('Sync artist error:', error.message, error.stack);
+    res.status(500).json({ message: 'Lỗi server', error: error.message });
+  }
+};
+
 module.exports = exports;

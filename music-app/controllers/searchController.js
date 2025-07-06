@@ -101,10 +101,13 @@ exports.searchAll = async (req, res) => {
             featIds = [];
           }
           featArtists = await Artist.findAll({
-            where: { artist_id: featIds },
-            attributes: ['stage_name'],
+            where: { artist_id: { [Op.in]: featIds } },
+            attributes: ['artist_id', 'stage_name'], // Thêm artist_id vào attributes
           });
-          featArtists = featArtists.map(artist => artist.stage_name);
+          featArtists = featArtists.map(artist => ({
+            artist_id: artist.artist_id,
+            stage_name: artist.stage_name,
+          }));
         }
 
         return {
@@ -116,7 +119,7 @@ exports.searchAll = async (req, res) => {
           img: songData.img ? `${baseUrl}${songData.img}` : null,
           artist_id: songData.artist_id,
           artist_name: songData.MainArtist ? songData.MainArtist.stage_name : null,
-          feat_artists: featArtists,
+          feat_artists: featArtists, // Trả về mảng object chứa artist_id và stage_name
           album_name: songData.Album ? songData.Album.title : null,
           is_downloadable: songData.is_downloadable,
           created_at: songData.created_at,

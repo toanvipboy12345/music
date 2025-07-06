@@ -11,16 +11,19 @@ exports.getUserQueue = async (req, res) => {
       order: [['position', 'ASC']],
     });
 
-    // Lấy danh sách tên ca sĩ feat
+    // Lấy danh sách ca sĩ feat với artist_id và stage_name
     const formattedQueue = await Promise.all(queue.map(async (item) => {
       let featArtists = [];
       if (item.feat_artists && item.feat_artists.length > 0) {
         const featArtistIds = Array.isArray(item.feat_artists) ? item.feat_artists : JSON.parse(item.feat_artists);
         const artists = await Artist.findAll({
           where: { artist_id: featArtistIds },
-          attributes: ['stage_name'],
+          attributes: ['artist_id', 'stage_name'],
         });
-        featArtists = artists.map(artist => artist.stage_name);
+        featArtists = artists.map(artist => ({
+          artist_id: artist.artist_id,
+          stage_name: artist.stage_name,
+        }));
       }
 
       return {
@@ -59,9 +62,12 @@ exports.addSongToQueue = async (req, res) => {
       const featArtistIds = Array.isArray(song.feat_artist_ids) ? song.feat_artist_ids : JSON.parse(song.feat_artist_ids);
       const artists = await Artist.findAll({
         where: { artist_id: featArtistIds },
-        attributes: ['stage_name'],
+        attributes: ['artist_id', 'stage_name'],
       });
-      featArtists = artists.map(artist => artist.stage_name);
+      featArtists = artists.map(artist => ({
+        artist_id: artist.artist_id,
+        stage_name: artist.stage_name,
+      }));
     }
 
     const transaction = await sequelize.transaction();
@@ -110,10 +116,13 @@ exports.addSongToQueue = async (req, res) => {
             const featArtistIds = Array.isArray(item.feat_artists) ? item.feat_artists : JSON.parse(item.feat_artists);
             const artists = await Artist.findAll({
               where: { artist_id: featArtistIds },
-              attributes: ['stage_name'],
+              attributes: ['artist_id', 'stage_name'],
               transaction,
             });
-            itemFeatArtists = artists.map(artist => artist.stage_name);
+            itemFeatArtists = artists.map(artist => ({
+              artist_id: artist.artist_id,
+              stage_name: artist.stage_name,
+            }));
           }
 
           return {
@@ -182,10 +191,13 @@ exports.addSongToQueue = async (req, res) => {
             const featArtistIds = Array.isArray(item.feat_artists) ? item.feat_artists : JSON.parse(item.feat_artists);
             const artists = await Artist.findAll({
               where: { artist_id: featArtistIds },
-              attributes: ['stage_name'],
+              attributes: ['artist_id', 'stage_name'],
               transaction,
             });
-            itemFeatArtists = artists.map(artist => artist.stage_name);
+            itemFeatArtists = artists.map(artist => ({
+              artist_id: artist.artist_id,
+              stage_name: artist.stage_name,
+            }));
           }
 
           return {
@@ -233,10 +245,13 @@ exports.addSongToQueue = async (req, res) => {
             const featArtistIds = Array.isArray(item.feat_artists) ? item.feat_artists : JSON.parse(item.feat_artists);
             const artists = await Artist.findAll({
               where: { artist_id: featArtistIds },
-              attributes: ['stage_name'],
+              attributes: ['artist_id', 'stage_name'],
               transaction,
             });
-            itemFeatArtists = artists.map(artist => artist.stage_name);
+            itemFeatArtists = artists.map(artist => ({
+              artist_id: artist.artist_id,
+              stage_name: artist.stage_name,
+            }));
           }
 
           return {
@@ -261,7 +276,6 @@ exports.addSongToQueue = async (req, res) => {
   }
 };
 
-// Các hàm khác được điều chỉnh tương tự
 exports.removeSongFromQueue = async (req, res) => {
   const { song_id } = req.params;
   const userId = req.user.user_id;
@@ -326,15 +340,18 @@ exports.updateCurrentSong = async (req, res) => {
       return res.status(404).json({ message: 'Bài hát không có trong danh sách chờ' });
     }
 
-    // Lấy danh sách tên ca sĩ feat
+    // Lấy danh sách ca sĩ feat với artist_id và stage_name
     let featArtists = [];
     if (queueItem.feat_artists && queueItem.feat_artists.length > 0) {
       const featArtistIds = Array.isArray(queueItem.feat_artists) ? queueItem.feat_artists : JSON.parse(queueItem.feat_artists);
       const artists = await Artist.findAll({
         where: { artist_id: featArtistIds },
-        attributes: ['stage_name'],
+        attributes: ['artist_id', 'stage_name'],
       });
-      featArtists = artists.map(artist => artist.stage_name);
+      featArtists = artists.map(artist => ({
+        artist_id: artist.artist_id,
+        stage_name: artist.stage_name,
+      }));
     }
 
     console.log('Setting is_current=false for all queue items, userId:', userId);
@@ -395,15 +412,18 @@ exports.nextSong = async (req, res) => {
       return res.status(404).json({ message: 'Không có bài hát tiếp theo' });
     }
 
-    // Lấy danh sách tên ca sĩ feat
+    // Lấy danh sách ca sĩ feat với artist_id và stage_name
     let featArtists = [];
     if (nextSong.feat_artists && nextSong.feat_artists.length > 0) {
       const featArtistIds = Array.isArray(nextSong.feat_artists) ? nextSong.feat_artists : JSON.parse(nextSong.feat_artists);
       const artists = await Artist.findAll({
         where: { artist_id: featArtistIds },
-        attributes: ['stage_name'],
+        attributes: ['artist_id', 'stage_name'],
       });
-      featArtists = artists.map(artist => artist.stage_name);
+      featArtists = artists.map(artist => ({
+        artist_id: artist.artist_id,
+        stage_name: artist.stage_name,
+      }));
     }
 
     console.log('Setting is_current=false for current song:', currentSong.queue_id);
@@ -461,15 +481,18 @@ exports.prevSong = async (req, res) => {
       return res.status(404).json({ message: 'Không có bài hát trước đó' });
     }
 
-    // Lấy danh sách tên ca sĩ feat
+    // Lấy danh sách ca sĩ feat với artist_id và stage_name
     let featArtists = [];
     if (prevSong.feat_artists && prevSong.feat_artists.length > 0) {
       const featArtistIds = Array.isArray(prevSong.feat_artists) ? prevSong.feat_artists : JSON.parse(prevSong.feat_artists);
       const artists = await Artist.findAll({
         where: { artist_id: featArtistIds },
-        attributes: ['stage_name'],
+        attributes: ['artist_id', 'stage_name'],
       });
-      featArtists = artists.map(artist => artist.stage_name);
+      featArtists = artists.map(artist => ({
+        artist_id: artist.artist_id,
+        stage_name: artist.stage_name,
+      }));
     }
 
     console.log('Setting is_current=false for current song:', currentSong.queue_id);
@@ -505,6 +528,7 @@ exports.clearQueue = async (req, res) => {
     res.status(500).json({ message: 'Không thể làm trống danh sách chờ' });
   }
 };
+
 exports.playContent = async (req, res) => {
   const { song_ids } = req.body;
   const userId = req.user.user_id;
@@ -543,7 +567,7 @@ exports.playContent = async (req, res) => {
       // Bài hát đầu tiên (index = 0) sẽ có position = 1 và is_current = true
       const queueItems = await Promise.all(
         songs.map(async (song, index) => {
-          // Lấy danh sách tên ca sĩ feat
+          // Lấy danh sách ca sĩ feat với artist_id và stage_name
           let featArtists = [];
           if (song.feat_artist_ids) {
             const featArtistIds = Array.isArray(song.feat_artist_ids) 
@@ -551,10 +575,13 @@ exports.playContent = async (req, res) => {
               : JSON.parse(song.feat_artist_ids);
             const artists = await Artist.findAll({
               where: { artist_id: featArtistIds },
-              attributes: ['stage_name'],
+              attributes: ['artist_id', 'stage_name'],
               transaction,
             });
-            featArtists = artists.map(artist => artist.stage_name);
+            featArtists = artists.map(artist => ({
+              artist_id: artist.artist_id,
+              stage_name: artist.stage_name,
+            }));
           }
 
           const queueItem = await Queue.create(

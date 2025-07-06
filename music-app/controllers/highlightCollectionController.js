@@ -5,7 +5,7 @@ const { Sequelize, Op } = require('sequelize');
 const getHighlightCollections = async (req, res) => {
   try {
     const artists = await Artist.findAll({
-      where: { popularity: { [Op.gt]: 50 } },
+      where: { popularity: { [Op.gt]: 82 } },
       attributes: ['artist_id', 'stage_name', 'popularity', 'profile_picture', 'created_at'],
       order: Sequelize.literal('RAND()'),
       limit: 10
@@ -56,7 +56,7 @@ const getHighlightCollectionByArtist = async (req, res) => {
         'feat_artist_ids',
         'is_downloadable',
         'created_at',
-        'listen_count' // Sửa từ play_count thành listen_count
+        'listen_count'
       ],
       include: [
         {
@@ -81,9 +81,12 @@ const getHighlightCollectionByArtist = async (req, res) => {
             if (Array.isArray(featIds) && featIds.length > 0) {
               const artists = await Artist.findAll({
                 where: { artist_id: { [Op.in]: featIds } },
-                attributes: ['stage_name']
+                attributes: ['artist_id', 'stage_name'] // Thêm artist_id vào attributes
               });
-              featArtists = artists.map(artist => artist.stage_name);
+              featArtists = artists.map(artist => ({
+                artist_id: artist.artist_id,
+                stage_name: artist.stage_name
+              }));
             }
           } catch (e) {
             console.error(`Lỗi khi parse feat_artist_ids cho bài hát ${song.song_id}:`, e.message);
@@ -99,11 +102,11 @@ const getHighlightCollectionByArtist = async (req, res) => {
           img: song.img ? `${baseUrl}${song.img}` : null,
           artist_id: song.artist_id,
           artist_name: artist.stage_name,
-          feat_artists: featArtists,
+          feat_artists: featArtists, // Mảng chứa object với artist_id và stage_name
           album_name: song.Album ? song.Album.title : null,
           is_downloadable: song.is_downloadable,
           created_at: song.created_at,
-          listen_count: song.listen_count // Sửa từ play_count thành listen_count
+          listen_count: song.listen_count
         };
       })
     );

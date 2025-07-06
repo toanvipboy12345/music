@@ -356,11 +356,11 @@ exports.getAlbumById = async (req, res) => {
     const relatedAlbums = await Album.findAll({
       where: {
         artist_id: album.artist_id,
-        album_id: { [Op.ne]: album.album_id } // Không lấy album hiện tại
+        album_id: { [Op.ne]: album.album_id }
       },
       attributes: {
         include: ['album_id', 'title', 'release_date', 'img', 'artist_id'],
-        exclude: ['created_at'] // Loại bỏ cột created_at
+        exclude: ['created_at']
       },
       order: [['created_at', 'DESC']]
     });
@@ -375,9 +375,12 @@ exports.getAlbumById = async (req, res) => {
             if (Array.isArray(featIds) && featIds.length > 0) {
               const artists = await Artist.findAll({
                 where: { artist_id: { [Op.in]: featIds } },
-                attributes: ['stage_name']
+                attributes: ['artist_id', 'stage_name']
               });
-              featArtists = artists.map(artist => artist.stage_name);
+              featArtists = artists.map(artist => ({
+                artist_id: artist.artist_id,
+                stage_name: artist.stage_name
+              }));
             }
           } catch (e) {
             console.error(`Lỗi khi parse feat_artist_ids cho bài hát ${song.song_id}:`, e.message);
@@ -414,7 +417,7 @@ exports.getAlbumById = async (req, res) => {
           artist_name: album.MainArtist.stage_name,
           artist_profile_picture: formatUrl(album.MainArtist.profile_picture, baseUrl),
           song_count: album.Songs.length,
-          total_duration: totalDuration, // Tổng thời lượng các bài hát (tính bằng giây)
+          total_duration: totalDuration,
           songs: songsWithFeats,
           related_albums: relatedAlbums.map(related => ({
             album_id: related.album_id,

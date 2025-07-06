@@ -1,5 +1,5 @@
 const { Op } = require('sequelize');
-const { Playlist, User, Song, PlaylistSong, Artist, Album } = require('../models'); // Thêm Artist và Album
+const { Playlist, User, Song, PlaylistSong, Artist, Album } = require('../models');
 const sequelize = require('../config/database');
 const path = require('path');
 const fs = require('fs');
@@ -40,7 +40,7 @@ exports.getPlaylistByUserId = async (req, res) => {
 
     // Tìm playlist cụ thể
     const playlist = await Playlist.findOne({
-      where: { user_id: userId, playlist_id: playlistId },
+      where: { playlist_id: playlistId },
       include: [
         { model: User, as: 'User', attributes: ['username'] },
         {
@@ -69,8 +69,14 @@ exports.getPlaylistByUserId = async (req, res) => {
     });
 
     if (!playlist) {
-      console.log('Playlist not found:', { userId, playlistId });
-      return res.status(404).json({ message: `Không tìm thấy playlist với ID ${playlistId} cho người dùng ${userId}` });
+      console.log('Playlist not found:', { playlistId });
+      return res.status(404).json({ message: `Không tìm thấy playlist với ID ${playlistId}` });
+    }
+
+    // Kiểm tra quyền truy cập
+    if (!playlist.is_public && playlist.user_id !== parseInt(userId)) {
+      console.log('Access denied: Playlist is not public and user is not owner', { userId, playlistId, playlistUserId: playlist.user_id });
+      return res.status(403).json({ message: 'Bạn không có quyền truy cập playlist này' });
     }
 
     const baseUrl = `${req.protocol}://${req.get('host')}`;
@@ -84,9 +90,12 @@ exports.getPlaylistByUserId = async (req, res) => {
           if (Array.isArray(featIds)) {
             const artists = await Artist.findAll({
               where: { artist_id: featIds },
-              attributes: ['stage_name']
+              attributes: ['artist_id', 'stage_name']
             });
-            featArtists = artists.map(artist => artist.stage_name);
+            featArtists = artists.map(artist => ({
+              artist_id: artist.artist_id,
+              stage_name: artist.stage_name
+            }));
           }
         } catch (e) {
           console.error('Error parsing feat_artist_ids:', e.message);
@@ -121,6 +130,8 @@ exports.getPlaylistByUserId = async (req, res) => {
         user_id: playlist.user_id,
         username: playlist.User.username,
         song_count: playlist.Songs.length,
+        is_public: playlist.is_public,
+        like_count: playlist.like_count,
         songs,
         created_at: playlist.created_at
       }
@@ -130,6 +141,7 @@ exports.getPlaylistByUserId = async (req, res) => {
     res.status(500).json({ message: 'Lỗi server', error: error.message });
   }
 };
+
 exports.getUserPlaylistsSummary = async (req, res) => {
   console.log(`[${new Date().toISOString()}] GET /playlists/user/:userId/summary called with params:`, req.params);
   try {
@@ -155,11 +167,13 @@ exports.getUserPlaylistsSummary = async (req, res) => {
     res.json({
       message: 'Lấy danh sách tóm tắt playlist theo người dùng thành công',
       playlists: playlists.map(playlist => ({
-        playlist_id: playlist.playlist_id, // Thêm playlist_id
+        playlist_id: playlist.playlist_id,
         title: playlist.title,
         img: formatUrl(playlist.img, baseUrl),
         created_at: playlist.created_at,
-        description: playlist.description
+        description: playlist.description,
+        is_public: playlist.is_public,
+        like_count: playlist.like_count
       }))
     });
   } catch (error) {
@@ -201,7 +215,7 @@ exports.createPlaylist = async (req, res) => {
         const savePath = path.join(uploadDir, newFileName);
         img_file = {
           path: savePath,
-          url: `/uploads/playlist/${newFileName}`
+          url: `/Uploads/playlist/${newFileName}`
         };
         console.log('Image file info:', img_file);
         const writeStream = fs.createWriteStream(savePath);
@@ -222,7 +236,7 @@ exports.createPlaylist = async (req, res) => {
         console.log('Busboy finished, fields:', fields);
         console.log('Files:', { img_file });
 
-        const { title, user_id, description } = fields;
+        const { title, user_id, description, is_public } = fields;
 
         // Validation
         if (!title || typeof title !== 'string' || title.length < 1) {
@@ -240,6 +254,9 @@ exports.createPlaylist = async (req, res) => {
           return res.status(400).json({ message: 'Người dùng không tồn tại' });
         }
 
+        // Xử lý is_public
+        const isPublicValue = is_public === undefined ? true : is_public === 'true' || is_public === true;
+
         // Tạo playlist
         const transaction = await sequelize.transaction();
         try {
@@ -247,7 +264,9 @@ exports.createPlaylist = async (req, res) => {
             title,
             user_id,
             img: img_file ? img_file.url : null,
-            description: description || null
+            description: description || null,
+            is_public: isPublicValue,
+            like_count: 0
           }, { transaction });
           console.log('Playlist created:', playlist.toJSON());
 
@@ -262,6 +281,8 @@ exports.createPlaylist = async (req, res) => {
               img: formatUrl(playlist.img, baseUrl),
               description: playlist.description,
               user_id: playlist.user_id,
+              is_public: playlist.is_public,
+              like_count: playlist.like_count,
               created_at: playlist.created_at
             }
           });
@@ -356,7 +377,7 @@ exports.deletePlaylist = async (req, res) => {
 
       // Xóa file ảnh nếu có
       if (playlist.img) {
-         const imgPath = path.join(__dirname, '../Uploads/playlist', path.basename(playlist.img)); // Sửa đường dẫn
+        const imgPath = path.join(__dirname, '../Uploads/playlist', path.basename(playlist.img));
         console.log('Attempting to delete image file:', imgPath);
         try {
           if (fs.existsSync(imgPath)) {
@@ -391,5 +412,3 @@ exports.deletePlaylist = async (req, res) => {
     res.status(500).json({ message: 'Lỗi server', error: error.message });
   }
 };
-
-module.exports = exports;
