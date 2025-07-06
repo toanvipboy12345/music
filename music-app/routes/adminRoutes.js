@@ -10,6 +10,7 @@ const isAdmin = require('../middleware/Admin');
 router.get('/genres', isAdmin, genreController.getGenres);
 router.get('/genres/:id', isAdmin, genreController.getGenreById);
 router.post('/genres/sync-spotify', isAdmin, genreController.syncGenresFromSpotify);
+router.delete('/genres/:id', isAdmin, genreController.deleteGenre);
 
 // Song routes
 router.post('/songs', isAdmin, songController.createSong);
@@ -22,10 +23,11 @@ router.delete('/songs/:id', isAdmin, songController.deleteSong);
 router.post('/artists', isAdmin, artistController.createArtist);
 router.get('/artists', isAdmin, artistController.getArtists);
 router.get('/artists/search', isAdmin, artistController.searchArtistsByName);
-
+router.post('/artists/sync', isAdmin, artistController.syncAllArtistsFromSpotify);
+router.post('/artists/:id/sync', isAdmin, artistController.syncArtistFromSpotify);
 // Album routes
 router.post('/albums', isAdmin, albumController.createAlbum);
 router.get('/albums', isAdmin, albumController.getAllAlbums);
 router.get('/albums/artist/:artistId', isAdmin, albumController.getAlbumsByArtist);
-
+router.put('/artists/:id/bio', isAdmin, artistController.updateArtistBio); // Thêm route mới
 module.exports = router;

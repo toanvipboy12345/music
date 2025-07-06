@@ -3,7 +3,7 @@ const router = express.Router();
 const playlistController = require('../controllers/playlistController');
 const queueController = require('../controllers/queueController');
 const isUser = require('../middleware/User');
-
+const userController = require('../controllers/userController');
 // Playlist routes for authenticated users
 router.get('/playlists/user/:userId/summary', isUser, playlistController.getUserPlaylistsSummary);
 router.get('/playlists/user/:userId/:playlistId', isUser, playlistController.getPlaylistByUserId);
@@ -20,5 +20,11 @@ router.post('/queue/next', isUser, queueController.nextSong);
 router.post('/queue/prev', isUser, queueController.prevSong);
 router.delete('/queue/clear', isUser, queueController.clearQueue);
 router.post('/queue/play-content', isUser, queueController.playContent); // Thêm endpoint mới
-
+router.post('/like-playlist/:playlistId', isUser, userController.likePlaylist);
+router.delete('/like-playlist/:playlistId', isUser, userController.unlikePlaylist);
+router.get('/like-playlist/:userId/:playlistId', isUser, userController.checkPlaylistLike); // Thêm tuyến này
+// Artist follow routes
+router.post('/follow-artist/:artistId', isUser, userController.followArtist);
+router.delete('/follow-artist/:artistId', isUser, userController.unfollowArtist);
+router.get('/follow-artist/:userId/:artistId', isUser, userController.checkArtistFollow);
 module.exports = router;
