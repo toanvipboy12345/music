@@ -36,6 +36,21 @@ const Artist = sequelize.define('Artist', {
       }
     }
   },
+  bio: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    validate: {
+      len: {
+        args: [0, 5000],
+        msg: 'Tiểu sử không được vượt quá 5000 ký tự'
+      }
+    }
+  },
+follower: {
+  type: DataTypes.INTEGER,
+  allowNull: false,
+  defaultValue: 0,
+},
   created_at: {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW

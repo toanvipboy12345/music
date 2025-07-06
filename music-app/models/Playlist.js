@@ -37,6 +37,20 @@ const Playlist = sequelize.define('Playlist', {
     type: DataTypes.TEXT,
     allowNull: true
   },
+  is_public: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: true,
+    validate: {
+      isBoolean: { msg: 'Chế độ công khai phải là giá trị boolean' }
+    }
+  },
+  like_count: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 0,
+
+  },
   created_at: {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW
@@ -45,6 +59,5 @@ const Playlist = sequelize.define('Playlist', {
   tableName: 'Playlists',
   timestamps: false
 });
-
 
 module.exports = Playlist;
