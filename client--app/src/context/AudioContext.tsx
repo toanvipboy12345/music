@@ -71,8 +71,15 @@ export const AudioProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       });
       throw new Error('Yêu cầu đăng nhập để thêm vào danh sách chờ');
     }
+    if (!song.audio_file_url) {
+      console.error('Song lacks audio_file_url:', song);
+      toast.error('Bài hát không có URL âm thanh hợp lệ', {
+        style: { background: 'black', color: 'white' },
+      });
+      throw new Error('Bài hát không có URL âm thanh hợp lệ');
+    }
     try {
-      console.log('Gửi yêu cầu POST /user/queue/add:', { song_id: song.song_id, playImmediately });
+      console.log('Gửi yêu cầu POST /user/queue/add:', { song_id: song.song_id, playImmediately, audio_file_url: song.audio_file_url });
       const response = await api.post(
         '/user/queue/add',
         { song_id: song.song_id, playImmediately },
@@ -86,19 +93,24 @@ export const AudioProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           position: response.data.position || 0,
           is_current: true,
         };
+        console.log('Setting current song in addToQueue:', queueItem);
         setCurrentSong(queueItem);
         setArtistName(song.artist_name);
         setIsExpanded(false);
       }
+      console.log('Current queue after addToQueue:', queue);
     } catch (error: any) {
       console.error('Lỗi khi thêm vào danh sách chờ:', error.response?.data || error.message);
+      toast.error(error.response?.data?.message || 'Không thể thêm vào danh sách chờ', {
+        style: { background: 'black', color: 'white' },
+      });
       throw error;
     }
   };
 
   const fetchQueue = async () => {
     if (!isAuthenticated || !token || !userId) {
-      console.log('fetchQueue: Không được xác thực hoặc không có token');
+      console.log('fetchQueue: Không được xác thực hoặc không có token', { isAuthenticated, token, userId });
       return;
     }
     try {
@@ -109,17 +121,28 @@ export const AudioProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       console.log('Phản hồi từ GET /user/queue:', response.data);
       const fetchedQueue = response.data.queue || [];
       const sortedQueue = fetchedQueue.sort((a: QueueItem, b: QueueItem) => a.position - b.position);
+      console.log('Sorted queue in fetchQueue:', sortedQueue);
       setQueue(sortedQueue);
       const current = sortedQueue.find((item: QueueItem) => item.is_current);
       if (current) {
+        if (!current.audio_file_url) {
+          console.error('Current song lacks audio_file_url:', current);
+          toast.error('Bài hát hiện tại không có URL âm thanh hợp lệ', {
+            style: { background: 'black', color: 'white' },
+          });
+          return;
+        }
+        console.log('Setting current song in fetchQueue:', current);
         setCurrentSong(current);
         setCurrentSongIndex(sortedQueue.findIndex((item: QueueItem) => item.is_current));
         setArtistName(current.artist_name);
       } else {
+        console.log('No current song found in queue:', sortedQueue);
         setCurrentSong(null);
         setCurrentSongIndex(0);
         setArtistName('');
       }
+      console.log('Current queue after fetchQueue:', sortedQueue);
     } catch (error: any) {
       console.error('Lỗi khi lấy danh sách chờ:', error.response?.data || error.message);
       toast.error(error.response?.data?.message || 'Không thể tải danh sách chờ', {
@@ -150,10 +173,19 @@ export const AudioProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       console.log('Phản hồi từ POST /user/queue/play-content:', response.data);
       const { queue: fetchedQueue } = response.data;
       const sortedQueue = fetchedQueue.sort((a: QueueItem, b: QueueItem) => a.position - b.position);
+      console.log('Sorted queue in playContent:', sortedQueue);
       setQueue(sortedQueue);
       setPlaylist(sortedQueue);
       const currentSong = sortedQueue.find((item: QueueItem) => item.is_current);
       if (currentSong) {
+        if (!currentSong.audio_file_url) {
+          console.error('Current song lacks audio_file_url:', currentSong);
+          toast.error('Bài hát hiện tại không có URL âm thanh hợp lệ', {
+            style: { background: 'black', color: 'white' },
+          });
+          return;
+        }
+        console.log('Setting current song in playContent:', currentSong);
         setCurrentSong(currentSong);
         setCurrentSongIndex(sortedQueue.findIndex((item: QueueItem) => item.is_current));
         setArtistName(currentSong.artist_name);
@@ -162,6 +194,7 @@ export const AudioProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           style: { background: 'black', color: 'white' },
         });
       } else {
+        console.error('No current song found in queue:', sortedQueue);
         setCurrentSong(null);
         setCurrentSongIndex(0);
         setArtistName('');
@@ -170,6 +203,7 @@ export const AudioProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           style: { background: 'black', color: 'white' },
         });
       }
+      console.log('Current queue after playContent:', sortedQueue);
     } catch (error: any) {
       console.error('Lỗi khi phát nội dung:', error.response?.data || error.message);
       toast.error(error.response?.data?.message || 'Không thể phát nội dung', {
@@ -193,6 +227,7 @@ export const AudioProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       setArtistName('');
       setIsExpanded(false);
     }
+    console.log('Current queue after auth change:', queue);
   }, [isAuthenticated, token, userId]);
 
   return (

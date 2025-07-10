@@ -168,9 +168,7 @@ const AudioPlayerComponent: React.FC<AudioPlayerProps> = ({
       isPlayingRef.current = true;
       lastSongIdRef.current = song.song_id;
       console.log("Song playing successfully:", song.song_id);
-      toast.success(`Đang phát: ${song.title}`, {
-        style: { background: "black", color: "white" },
-      });
+
     } catch (error: any) {
       console.error("Error playing song:", song.song_id, error);
       if (error.name !== "AbortError") {

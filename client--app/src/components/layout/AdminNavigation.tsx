@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Button } from '../ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../ui/collapsible';
-import { Menu, X, Home, Users, Music, Disc, List, Tag, Heart, BarChart, Image, ChevronDown } from 'react-feather';
+import { Menu, X, Home, Users, Music, Disc, List, Tag, Heart, BarChart, Image, ChevronDown, Star } from 'react-feather';
 
 interface AdminNavigationProps {
   onNavClick: (page: string) => void;
@@ -48,6 +48,7 @@ export const AdminNavigation: React.FC<AdminNavigationProps> = ({ onNavClick, ac
         { page: 'genres', label: 'Thể loại', icon: <Tag className="w-5 h-5 text-gray-400 group-hover:text-white transition-colors duration-200" /> },
         { page: 'reports', label: 'Báo cáo & Thống kê', icon: <BarChart className="w-5 h-5 text-gray-400 group-hover:text-white transition-colors duration-200" /> },
         { page: 'media', label: 'Nội dung đa phương tiện', icon: <Image className="w-5 h-5 text-gray-400 group-hover:text-white transition-colors duration-200" /> },
+        { page: 'premium', label: 'Premium', icon: <Star className="w-5 h-5 text-gray-400 group-hover:text-white transition-colors duration-200" /> },
       ],
     },
   ];

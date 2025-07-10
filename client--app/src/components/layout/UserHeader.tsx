@@ -3,31 +3,21 @@ import { Button } from '../ui/button';
 import { useAuth } from '../../context/authContext';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Search } from 'react-feather';
-import { Avatar, AvatarFallback } from '../ui/avatar';
+import { Avatar, AvatarImage, AvatarFallback } from '../ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '../ui/dropdown-menu';
 import logo from '../../assets/1725820319spotify-logo-black.png';
 
 // Logo Spotify bọc trong Link
 const SpotifyLogo = () => (
   <Link to="/" className="hover:scale-105 transition-transform">
-    <img
-      src={logo}
-      alt="Spotify Logo"
-      className="w-32 h-auto"
-    />
+    <img src={logo} alt="Spotify Logo" className="w-32 h-auto" />
   </Link>
 );
 
-// Hàm tạo avatar từ tên
-const generateAvatarFallback = (name: string | null) => {
-  if (!name) return 'U';
-  return name.charAt(0).toUpperCase();
-};
-
 export const UserHeader: React.FC = () => {
-  const { isAuthenticated, logout, userRole } = useAuth();
+  const { isAuthenticated, logout, userRole, avatar_url, is_premium, username } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation(); // Thêm useLocation
+  const location = useLocation();
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   // Debounce để điều hướng khi nhập từ khóa
@@ -72,7 +62,12 @@ export const UserHeader: React.FC = () => {
 
         {/* Phần bên phải */}
         <div className="col-span-3 flex items-center justify-end space-x-4">
-          <Button variant="outline">Khám phá Premium</Button>
+          {/* Hiển thị nút "Khám phá Premium" chỉ khi không phải là Premium */}
+          {!is_premium && (
+            <Link to="/premium">
+              <Button variant="outline">Khám phá Premium</Button>
+            </Link>
+          )}
           {!isAuthenticated ? (
             <Link to="/login">
               <Button variant="outline">Đăng nhập</Button>
@@ -81,7 +76,8 @@ export const UserHeader: React.FC = () => {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Avatar className="cursor-pointer">
-                  <AvatarFallback>{generateAvatarFallback(userRole)}</AvatarFallback>
+                  <AvatarImage src={avatar_url || undefined} alt="User Avatar" />
+                  <AvatarFallback>{username ? username.charAt(0).toUpperCase() : 'U'}</AvatarFallback>
                 </Avatar>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-48 bg-black border border-gray-700 text-white">
@@ -94,10 +90,7 @@ export const UserHeader: React.FC = () => {
                 <DropdownMenuItem asChild>
                   <Link to="/settings" className="hover:bg-gray-800">Cài đặt</Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => logout()}
-                  className="hover:bg-gray-800"
-                >
+                <DropdownMenuItem onClick={() => logout()} className="hover:bg-gray-800">
                   Đăng xuất
                 </DropdownMenuItem>
               </DropdownMenuContent>
