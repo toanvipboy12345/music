@@ -21,6 +21,7 @@ const formSchema = z.object({
   username: z.string().min(3, 'Tên người dùng phải có ít nhất 3 ký tự').max(50, 'Tên người dùng không được vượt quá 50 ký tự'),
   email: z.string().email('Email không hợp lệ'),
   password: z.string().min(6, 'Mật khẩu phải có ít nhất 6 ký tự').max(100, 'Mật khẩu không được vượt quá 100 ký tự'),
+  full_name: z.string().min(2, 'Họ tên phải có ít nhất 2 ký tự').max(100, 'Họ tên không được vượt quá 100 ký tự').optional().or(z.literal('')),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -36,6 +37,7 @@ export const Register: React.FC = () => {
       username: '',
       email: '',
       password: '',
+      full_name: '',
     },
   });
 
@@ -46,6 +48,7 @@ export const Register: React.FC = () => {
         username: data.username,
         email: data.email,
         password: data.password,
+        full_name: data.full_name,
       });
       toast.success('Đăng ký thành công! Vui lòng đăng nhập.', {
         style: { background: 'black', color: 'white' },
@@ -95,6 +98,24 @@ export const Register: React.FC = () => {
                   <FormControl>
                     <Input
                       placeholder="Nhập email của bạn"
+                      className="bg-neutral-800 text-white border-neutral-700 placeholder-neutral-400 focus:ring-green-500 focus:border-green-500"
+                      disabled={isLoading}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage className="text-red-400" />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="full_name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-white">Họ tên</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Nhập họ tên (tùy chọn)"
                       className="bg-neutral-800 text-white border-neutral-700 placeholder-neutral-400 focus:ring-green-500 focus:border-green-500"
                       disabled={isLoading}
                       {...field}

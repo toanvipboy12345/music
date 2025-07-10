@@ -3,15 +3,16 @@ export interface RegisterCredentials {
   username: string;
   email: string;
   password: string;
+  full_name?: string;
 }
 
 export interface LoginCredentials {
-  email: string;
+  email?: string;
+  username?: string;
   password: string;
 }
 
 export interface AuthResponse {
-  refreshToken: any;
   message: string;
   token?: string;
   role?: 'user' | 'admin';
@@ -19,6 +20,9 @@ export interface AuthResponse {
     id: number;
     username: string;
     email: string;
-    role: string;
+    avatar_url: string;
+    role: 'user' | 'admin';
+    is_premium: boolean;
+    premium_plan: string | null; // Sử dụng string | null thay vì 'basic' | 'advanced' | null
   };
 }
