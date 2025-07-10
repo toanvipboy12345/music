@@ -2,14 +2,15 @@ import React, { useState } from 'react';
 import { AdminHeader } from '../components/layout/AdminHeader';
 import { AdminNavigation } from '../components/layout/AdminNavigation';
 import { AdminUsers } from './Admin/AdminUsers';
-import  AdminArtists  from './Admin/AdminArtists';
-import  AdminSongs from './Admin/AdminSongs';
-import  AdminAlbums  from './Admin/AdminAlbums';
+import AdminArtists from './Admin/AdminArtists';
+import AdminSongs from './Admin/AdminSongs';
+import AdminAlbums from './Admin/AdminAlbums';
 import { AdminPlaylists } from './Admin/AdminPlaylists';
-import  AdminGenres  from './Admin/AdminGenres';
+import AdminGenres from './Admin/AdminGenres';
 import { AdminUserInteractions } from './Admin/AdminUserInteractions';
 import { AdminReports } from './Admin/AdminReports';
 import { AdminMedia } from './Admin/AdminMedia';
+import AdminPremium from './Admin/AdminPremium';
 
 export const Admin: React.FC = () => {
   const [activePage, setActivePage] = useState('dashboard');
@@ -41,6 +42,8 @@ export const Admin: React.FC = () => {
         return <AdminReports />;
       case 'media':
         return <AdminMedia />;
+      case 'premium':
+        return <AdminPremium />;
       case 'system':
         return <AdminSystem />;
       default:
@@ -49,7 +52,7 @@ export const Admin: React.FC = () => {
   };
 
   return (
-    <div className="flex min-h-screen ">
+    <div className="flex min-h-screen">
       {/* Sidebar Navigation */}
       <AdminNavigation onNavClick={setActivePage} activePage={activePage} />
 

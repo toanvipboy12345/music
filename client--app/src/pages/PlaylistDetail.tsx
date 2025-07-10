@@ -96,6 +96,7 @@ export const PlaylistDetail: React.FC = () => {
             album_name: song.album_name || null,
           })),
         };
+        console.log('Playlist detail fetched:', playlistData);
         setPlaylistDetail(playlistData);
         setArtistName(playlistData.username);
 

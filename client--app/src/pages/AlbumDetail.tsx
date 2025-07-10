@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Skeleton from 'react-loading-skeleton';
 import 'react-loading-skeleton/dist/skeleton.css';
-import { PlayIcon, ArrowDownTrayIcon, EllipsisHorizontalIcon, QueueListIcon, ClockIcon } from '@heroicons/react/24/solid';
+import { PlayIcon, ArrowDownTrayIcon, EllipsisHorizontalIcon, QueueListIcon } from '@heroicons/react/24/solid';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Toaster, toast } from "sonner";
@@ -110,6 +110,7 @@ export const AlbumDetail: React.FC = () => {
           songs: response.data.data.album.songs || [],
           related_albums: response.data.data.album.related_albums || []
         };
+        console.log('Album detail fetched:', albumData);
         setAlbum(albumData);
         setArtistName(albumData.artist_name || '');
       } catch (err: any) {
