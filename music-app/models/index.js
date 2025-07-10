@@ -1,53 +1,3 @@
-
-// const sequelize = require('../config/database');
-// const Song = require('./Song');
-// const Artist = require('./Artist');
-// const Genre = require('./Genre');
-// const User = require('./User');
-// const Album = require('./Album');
-// const Playlist = require('./Playlist');
-// const PlaylistSong = require('./PlaylistSong');
-// const Queue = require('./Queue');
-// const UserPlaylistLikes = require('./UserPlaylistLikes');
-// const UserArtistFollows = require('./UserArtistFollows');
-// // Định nghĩa các mối quan hệ
-// Song.belongsTo(Artist, { foreignKey: 'artist_id', as: 'MainArtist' });
-// Artist.hasMany(Song, { foreignKey: 'artist_id', as: 'Songs' });
-// Song.belongsTo(Genre, { foreignKey: 'genre_id', as: 'Genre' });
-// Genre.hasMany(Song, { foreignKey: 'genre_id', as: 'Songs' });
-
-// Song.belongsTo(Album, { foreignKey: 'album_id', as: 'Album' });
-// Album.hasMany(Song, { foreignKey: 'album_id', as: 'Songs' });
-// Album.belongsTo(Artist, { foreignKey: 'artist_id', as: 'MainArtist' });
-// Artist.hasMany(Album, { foreignKey: 'artist_id', as: 'Albums' });
-
-// Playlist.belongsToMany(Song, { through: PlaylistSong, foreignKey: 'playlist_id', as: 'Songs' });
-// Song.belongsToMany(Playlist, { through: PlaylistSong, foreignKey: 'song_id', as: 'Playlists' });
-// Playlist.belongsTo(User, { foreignKey: 'user_id', as: 'User' });
-// User.hasMany(Playlist, { foreignKey: 'user_id', as: 'Playlists' });
-
-// Queue.belongsTo(User, { foreignKey: 'user_id', as: 'User' });
-// User.hasMany(Queue, { foreignKey: 'user_id', as: 'Queue' });
-// Queue.belongsTo(Song, { foreignKey: 'song_id', as: 'Song' });
-// Song.hasMany(Queue, { foreignKey: 'song_id', as: 'Queue' });
-
-// User.belongsToMany(Playlist, { through: UserPlaylistLikes, foreignKey: 'user_id', as: 'LikedPlaylists' });
-// Playlist.belongsToMany(User, { through: UserPlaylistLikes, foreignKey: 'playlist_id', as: 'LikedByUsers' });
-
-// // Quan hệ follow artist
-// User.belongsToMany(Artist, { through: UserArtistFollows, foreignKey: 'user_id', as: 'FollowedArtists' });
-// Artist.belongsToMany(User, { through: UserArtistFollows, foreignKey: 'artist_id', as: 'Followers' });
-// module.exports = {
-//   sequelize,
-//   Song,
-//   Artist,
-//   Genre,
-//   User,
-//   Album,
-//   Playlist,
-//   PlaylistSong,
-//   Queue
-// };
 const { Sequelize, DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 
@@ -62,6 +12,8 @@ const PlaylistSong = require('./PlaylistSong');
 const Queue = require('./Queue');
 const Song = require('./Song');
 const UserArtistFollows = require('./UserArtistFollows');
+const PremiumPlan = require('./PremiumPlan');
+const PremiumSubscription = require('./PremiumSubscription');
 
 // Định nghĩa các mối quan hệ
 // Song ↔ Artist (1:N)
@@ -104,6 +56,14 @@ Playlist.belongsToMany(User, { through: UserPlaylistLikes, foreignKey: 'playlist
 User.belongsToMany(Artist, { through: UserArtistFollows, foreignKey: 'user_id', as: 'FollowedArtists' });
 Artist.belongsToMany(User, { through: UserArtistFollows, foreignKey: 'artist_id', as: 'Followers' });
 
+// User ↔ PremiumSubscription (1:N)
+User.hasMany(PremiumSubscription, { foreignKey: 'user_id', as: 'subscriptions' });
+PremiumSubscription.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+
+// PremiumPlan ↔ PremiumSubscription (1:N)
+PremiumPlan.hasMany(PremiumSubscription, { foreignKey: 'plan_id', as: 'subscriptions' });
+PremiumSubscription.belongsTo(PremiumPlan, { foreignKey: 'plan_id', as: 'plan' });
+
 // Export tất cả model
 module.exports = {
   sequelize,
@@ -117,4 +77,6 @@ module.exports = {
   Queue,
   Song,
   UserArtistFollows,
+  PremiumPlan,
+  PremiumSubscription
 };
