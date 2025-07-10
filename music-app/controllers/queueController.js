@@ -28,7 +28,7 @@ exports.getUserQueue = async (req, res) => {
 
       return {
         ...item.toJSON(),
-        audio_file_url: item.audio_file_url ? `${baseUrl}${item.audio_file_url}` : null,
+        audio_file_url: item.audio_file_url,
         img: item.img ? `${baseUrl}${item.img}` : null,
         feat_artists: featArtists,
       };
@@ -127,7 +127,7 @@ exports.addSongToQueue = async (req, res) => {
 
           return {
             ...item.toJSON(),
-            audio_file_url: item.audio_file_url ? `${baseUrl}${item.audio_file_url}` : null,
+            audio_file_url: item.audio_file_url,
             img: item.img ? `${baseUrl}${item.img}` : null,
             feat_artists: itemFeatArtists,
           };
@@ -202,7 +202,7 @@ exports.addSongToQueue = async (req, res) => {
 
           return {
             ...item.toJSON(),
-            audio_file_url: item.audio_file_url ? `${baseUrl}${item.audio_file_url}` : null,
+            audio_file_url: item.audio_file_url,
             img: item.img ? `${baseUrl}${item.img}` : null,
             feat_artists: itemFeatArtists,
           };
@@ -256,7 +256,7 @@ exports.addSongToQueue = async (req, res) => {
 
           return {
             ...item.toJSON(),
-            audio_file_url: item.audio_file_url ? `${baseUrl}${item.audio_file_url}` : null,
+            audio_file_url: item.audio_file_url,
             img: item.img ? `${baseUrl}${item.img}` : null,
             feat_artists: itemFeatArtists,
           };
@@ -365,7 +365,7 @@ exports.updateCurrentSong = async (req, res) => {
 
     const formattedQueueItem = {
       ...queueItem.toJSON(),
-      audio_file_url: queueItem.audio_file_url ? `${baseUrl}${queueItem.audio_file_url}` : null,
+      audio_file_url: queueItem.audio_file_url,
       img: queueItem.img ? `${baseUrl}${queueItem.img}` : null,
       feat_artists: featArtists,
     };
@@ -434,7 +434,7 @@ exports.nextSong = async (req, res) => {
 
     const formattedNextSong = {
       ...nextSong.toJSON(),
-      audio_file_url: nextSong.audio_file_url ? `${baseUrl}${nextSong.audio_file_url}` : null,
+      audio_file_url: nextSong.audio_file_url,
       img: nextSong.img ? `${baseUrl}${nextSong.img}` : null,
       feat_artists: featArtists,
     };
@@ -503,7 +503,7 @@ exports.prevSong = async (req, res) => {
 
     const formattedPrevSong = {
       ...prevSong.toJSON(),
-      audio_file_url: prevSong.audio_file_url ? `${baseUrl}${prevSong.audio_file_url}` : null,
+      audio_file_url: prevSong.audio_file_url,
       img: prevSong.img ? `${baseUrl}${prevSong.img}` : null,
       feat_artists: featArtists,
     };
@@ -604,7 +604,7 @@ exports.playContent = async (req, res) => {
 
           return {
             ...queueItem.toJSON(),
-            audio_file_url: queueItem.audio_file_url ? `${baseUrl}${queueItem.audio_file_url}` : null,
+            audio_file_url: queueItem.audio_file_url,
             img: queueItem.img ? `${baseUrl}${queueItem.img}` : null,
             feat_artists: featArtists,
           };

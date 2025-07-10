@@ -68,9 +68,6 @@ const getHighlightCollectionByArtist = async (req, res) => {
       ]
     });
 
-    // Tạo base URL từ request
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
-
     // Xử lý danh sách bài hát để thêm thông tin ca sĩ feat, artist_name và listen_count
     const songsWithFeats = await Promise.all(
       songs.map(async (song) => {
@@ -81,7 +78,7 @@ const getHighlightCollectionByArtist = async (req, res) => {
             if (Array.isArray(featIds) && featIds.length > 0) {
               const artists = await Artist.findAll({
                 where: { artist_id: { [Op.in]: featIds } },
-                attributes: ['artist_id', 'stage_name'] // Thêm artist_id vào attributes
+                attributes: ['artist_id', 'stage_name']
               });
               featArtists = artists.map(artist => ({
                 artist_id: artist.artist_id,
@@ -98,11 +95,11 @@ const getHighlightCollectionByArtist = async (req, res) => {
           title: song.title,
           duration: song.duration,
           release_date: song.release_date,
-          audio_file_url: song.audio_file_url ? `${baseUrl}${song.audio_file_url}` : null,
-          img: song.img ? `${baseUrl}${song.img}` : null,
+          audio_file_url: song.audio_file_url, // Loại bỏ baseUrl
+          img: song.img ? `${req.protocol}://${req.get('host')}${song.img}` : null, // Giữ baseUrl cho img nếu cần
           artist_id: song.artist_id,
           artist_name: artist.stage_name,
-          feat_artists: featArtists, // Mảng chứa object với artist_id và stage_name
+          feat_artists: featArtists,
           album_name: song.Album ? song.Album.title : null,
           is_downloadable: song.is_downloadable,
           created_at: song.created_at,

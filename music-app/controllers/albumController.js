@@ -392,7 +392,7 @@ exports.getAlbumById = async (req, res) => {
           title: song.title,
           duration: song.duration,
           release_date: song.release_date,
-          audio_file_url: formatUrl(song.audio_file_url, baseUrl),
+          audio_file_url: song.audio_file_url,
           img: formatUrl(song.img, baseUrl),
           artist_id: song.artist_id,
           artist_name: album.MainArtist.stage_name,

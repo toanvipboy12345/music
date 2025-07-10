@@ -115,7 +115,7 @@ exports.searchAll = async (req, res) => {
           title: songData.title,
           duration: songData.duration,
           release_date: songData.release_date,
-          audio_file_url: songData.audio_file_url ? `${baseUrl}${songData.audio_file_url}` : null,
+          audio_file_url: songData.audio_file_url,
           img: songData.img ? `${baseUrl}${songData.img}` : null,
           artist_id: songData.artist_id,
           artist_name: songData.MainArtist ? songData.MainArtist.stage_name : null,

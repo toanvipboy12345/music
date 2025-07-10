@@ -2,17 +2,16 @@ const User = require('../models/User');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const jwtConfig = require('../config/jwt');
-const Sequelize = require('sequelize');
 
 exports.register = async (req, res) => {
   console.log(`[${new Date().toISOString()}] POST /auth/register called with body:`, req.body);
   try {
-    const { username, email, password } = req.body;
+    const { username, email, password, full_name } = req.body;
 
-    // Kiểm tra trường trống
+    // Kiểm tra trường bắt buộc
     if (!username || !email || !password) {
-      console.log('Validation failed: Missing required fields', { username, email, password });
-      return res.status(400).json({ message: 'Vui lòng điền đầy đủ thông tin' });
+      console.log('Validation failed: Missing required fields', { username, email, password, full_name });
+      return res.status(400).json({ message: 'Vui lòng điền đầy đủ username, email và password' });
     }
 
     // Kiểm tra email đã tồn tại
@@ -31,22 +30,37 @@ exports.register = async (req, res) => {
       return res.status(409).json({ message: 'Tên người dùng đã được sử dụng' });
     }
 
-    // Tạo người dùng (hook beforeCreate sẽ mã hóa mật khẩu)
-    console.log('Creating user with:', { username, email });
-    const user = await User.create({ username, email, password, role: 'user' });
+    // Tạo người dùng (hook beforeCreate sẽ mã hóa mật khẩu, avatar_url tự động gán)
+    console.log('Creating user with:', { username, email, full_name });
+    const user = await User.create({
+      username,
+      email,
+      password,
+      full_name: full_name || null,
+      role: 'user'
+    });
     console.log('User created successfully:', {
       id: user.user_id,
       username: user.username,
       email: user.email,
+      full_name: user.full_name,
+      avatar_url: user.avatar_url,
       role: user.role,
     });
 
     res.status(201).json({
       message: 'Đăng ký thành công',
-      user: { id: user.user_id, username: user.username, email: user.email, role: user.role },
+      user: {
+        id: user.user_id,
+        username: user.username,
+        email: user.email,
+        full_name: user.full_name,
+        avatar_url: user.avatar_url,
+        role: user.role
+      },
     });
   } catch (error) {
-   console.error('Register error:', {
+    console.error('Register error:', {
       name: error.name,
       message: error.message,
       stack: error.stack,
@@ -116,7 +130,14 @@ exports.login = async (req, res) => {
       message: 'Đăng nhập thành công',
       token,
       role: user.role,
-      user: { id: user.user_id, username: user.username, email: user.email },
+      user: {
+        id: user.user_id,
+        username: user.username,
+        email: user.email,
+        avatar_url: user.avatar_url,
+        is_premium: user.is_premium,
+        premium_plan: user.premium_plan // Thêm premium_plan vào response
+      },
     });
   } catch (error) {
     console.error('Login error:', {
@@ -136,14 +157,34 @@ exports.logout = (req, res) => {
   }
 };
 
-exports.check = (req, res) => {
+exports.check = async (req, res) => {
   try {
     if (req.user) {
-      res.json({ message: 'Đã đăng nhập', user: { id: req.user.id, role: req.user.role } });
+      // Tìm người dùng trong cơ sở dữ liệu để lấy thông tin đầy đủ
+      const user = await User.findOne({ where: { user_id: req.user.id } });
+      if (!user) {
+        return res.status(404).json({ message: 'Người dùng không tồn tại' });
+      }
+      res.json({
+        message: 'Đã đăng nhập',
+        user: {
+          id: user.user_id,
+          username: user.username,
+          email: user.email,
+          avatar_url: user.avatar_url,
+          role: user.role,
+          is_premium: user.is_premium
+        }
+      });
     } else {
       res.status(401).json({ message: 'Chưa đăng nhập' });
     }
   } catch (error) {
+    console.error('Check error:', {
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+    });
     res.status(500).json({ message: 'Lỗi server', error: error.message });
   }
 };
