@@ -4,6 +4,7 @@ const genreController = require('../controllers/genreController');
 const songController = require('../controllers/songController');
 const artistController = require('../controllers/artistController');
 const albumController = require('../controllers/albumController');
+const premiumController = require('../controllers/premiumController');
 const isAdmin = require('../middleware/Admin');
 
 // Genre routes
@@ -30,4 +31,12 @@ router.post('/albums', isAdmin, albumController.createAlbum);
 router.get('/albums', isAdmin, albumController.getAllAlbums);
 router.get('/albums/artist/:artistId', isAdmin, albumController.getAlbumsByArtist);
 router.put('/artists/:id/bio', isAdmin, artistController.updateArtistBio); // Thêm route mới
+// Premium routes
+router.post('/premium/plans', isAdmin, premiumController.createPremiumPlan);
+router.put('/premium/plans/:plan_id', isAdmin, premiumController.updatePremiumPlan);
+router.get('/premium/plans', isAdmin, premiumController.getPremiumPlans);
+router.get('/premium/plans/:plan_id', isAdmin, premiumController.getPremiumPlanById);
+router.get('/premium/subscriptions', isAdmin, premiumController.getPremiumSubscriptions);
+router.post('/premium/subscriptions', isAdmin, premiumController.createPremiumSubscription);
+router.delete('/premium/subscriptions/:subscription_id', isAdmin, premiumController.cancelPremiumSubscription);
 module.exports = router;
