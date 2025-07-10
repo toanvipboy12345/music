@@ -4,6 +4,9 @@ const playlistController = require('../controllers/playlistController');
 const queueController = require('../controllers/queueController');
 const isUser = require('../middleware/User');
 const userController = require('../controllers/userController');
+const userPremiumController = require('../controllers/userPremiumController'); // Đảm bảo import đúng
+const downloadController = require('../controllers/downloadController');
+const isPremiumUser = require('../middleware/PremiumUser');
 // Playlist routes for authenticated users
 router.get('/playlists/user/:userId/summary', isUser, playlistController.getUserPlaylistsSummary);
 router.get('/playlists/user/:userId/:playlistId', isUser, playlistController.getPlaylistByUserId);
@@ -27,4 +30,15 @@ router.get('/like-playlist/:userId/:playlistId', isUser, userController.checkPla
 router.post('/follow-artist/:artistId', isUser, userController.followArtist);
 router.delete('/follow-artist/:artistId', isUser, userController.unfollowArtist);
 router.get('/follow-artist/:userId/:artistId', isUser, userController.checkArtistFollow);
+// Premium plan routes
+// Premium plan user/premium/plan
+router.get('/premium/plans', userPremiumController.getPublicPremiumPlans);
+router.post('/premium/vnpay', isUser, userPremiumController.createVnpayPayment);
+router.get('/premium/vnpay_return', userPremiumController.handleVnpayReturn);
+router.post('/premium/vnpay_ipn', userPremiumController.handleVnpayIPN);
+router.post('/premium/subscribe', isUser, userPremiumController.createPremiumSubscription);
+router.delete('/premium/subscribe/:subscription_id', isUser, userPremiumController.cancelPremiumSubscription);
+router.get('/premium/plans/:plan_id', userPremiumController.getPremiumPlanById);
+// Download song route for premium users
+router.get('/download/song/:song_id', isUser, isPremiumUser, downloadController.downloadSong);
 module.exports = router;
