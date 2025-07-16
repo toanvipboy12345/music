@@ -61,14 +61,11 @@ export const CollectionList: React.FC = () => {
   if (error) return <div className="text-red-500 text-center">{error}</div>;
 
   return (
-    <div className="w-full py-6 px-10">
+    <div className="w-full py-4 px-4 sm:px-6">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-bold text-white">
+        <h2 className="text-2xl font-bold text-white line-clamp-1 hover:underline">
           Tuyển tập nhạc hay nhất của các nghệ sĩ
         </h2>
-        <Link to="/collections" className="hover:underline text-white">
-          Hiện tất cả
-        </Link>
       </div>
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
@@ -83,18 +80,18 @@ export const CollectionList: React.FC = () => {
       ) : (
         <Swiper
           modules={[Autoplay]}
-          spaceBetween={20}
-          slidesPerView={1}
+          spaceBetween={10}
+          slidesPerView={2.5} // Hiển thị 2 slide đầy đủ và một nửa slide thứ 3
           autoplay={{ delay: 5000, disableOnInteraction: false }}
           breakpoints={{
-            640: { slidesPerView: 2 },
-            768: { slidesPerView: 3 },
-            1024: { slidesPerView: 7 },
+            0: { slidesPerView: 2.5, spaceBetween: 8 }, // Mobile: 2.5 slides
+            640: { slidesPerView: 4, spaceBetween: 10 }, // Tablet: 4 slides
+            1024: { slidesPerView: 7, spaceBetween: 15 }, // Desktop: 7 slides
           }}
           className="w-full"
         >
           {collections.map((collection, index) => (
-            <SwiperSlide key={collection.artist_id}>
+            <SwiperSlide key={collection.artist_id} >
               <Link
                 to={`/collection/${collection.artist_id}`}
                 state={{ baseColor: colors[index % colors.length] }}
@@ -104,19 +101,19 @@ export const CollectionList: React.FC = () => {
                   ) // Debug: Kiểm tra khi click
                 }
               >
-                <div className={`${colors[index % colors.length]} rounded-lg`}>
-                  <div className="bg-white text-black text-4xl font-bold p-0 text-center">
+                <div className={`${colors[index % colors.length]}`}>
+                  <div className="bg-white text-black text-2xl sm:text-3xl font-bold p-1 text-center">
                     THIS IS
                   </div>
                   <div className="flex justify-center">
                     <img
                       src={collection.img}
                       alt={collection.artist_name}
-                      className="w-34 object-contain"
+                      className="w-24 h-24 sm:w-24 sm:h-24 lg:w-32 lg:h-32 object-contain"
                     />
                   </div>
-                  <div className="bg-inherit text-center p-0">
-                    <h3 className="text-lg font-semibold text-black">
+                  <div className="bg-inherit text-center p-1">
+                    <h3 className="text-sm sm:text-lg font-semibold text-black">
                       {collection.artist_name.toUpperCase()}
                     </h3>
                   </div>

@@ -74,7 +74,7 @@ export const UserHeader: React.FC = () => {
             </Link>
           ) : (
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
+              <DropdownMenuTrigger asChild >
                 <Avatar className="cursor-pointer">
                   <AvatarImage src={avatar_url || undefined} alt="User Avatar" />
                   <AvatarFallback>{username ? username.charAt(0).toUpperCase() : 'U'}</AvatarFallback>

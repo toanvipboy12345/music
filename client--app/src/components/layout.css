@@ -1,0 +1,47 @@
+/* Đảm bảo body luôn có background đen */
+body {
+  background-color: #000;
+}
+
+/* Hiệu ứng fade-out cho splash screen */
+.animate-fadeOut {
+  animation: fadeOut 0.3s ease-in-out forwards;
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* Hiệu ứng thu gọn cho logo */
+.animate-scaleDown {
+  animation: scaleDown 0.3s ease-in-out forwards;
+}
+
+@keyframes scaleDown {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+}
+
+/* Hiệu ứng fade-in cho nội dung chính */
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-in-out forwards;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

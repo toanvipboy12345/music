@@ -117,7 +117,7 @@ const AudioPlayerComponent: React.FC<AudioPlayerProps> = ({
     console.log("Updating document title for song:", song.song_id, song.title);
     const artistString =
       song.feat_artists.length > 0
-        ? `${song.artist_name}, ${song.feat_artists.join(", ")}`
+        ? `${song.artist_name}, ${song.feat_artists.map((artist) => artist.stage_name).join(", ")}`
         : song.artist_name;
     document.title = `${song.title} - ${artistString}`;
 
@@ -125,7 +125,7 @@ const AudioPlayerComponent: React.FC<AudioPlayerProps> = ({
       if (song.song_id !== hasIncrementedRef.current) {
         try {
           console.log("Incrementing listen count for song:", song.song_id);
-          await api.post(`/public/listen/song/${song.song_id}`);
+          await api.post(`/user/listen/song/${song.song_id}`);
           hasIncrementedRef.current = song.song_id;
           console.log("Listen count incremented for song:", song.song_id);
         } catch (error) {
@@ -168,7 +168,6 @@ const AudioPlayerComponent: React.FC<AudioPlayerProps> = ({
       isPlayingRef.current = true;
       lastSongIdRef.current = song.song_id;
       console.log("Song playing successfully:", song.song_id);
-
     } catch (error: any) {
       console.error("Error playing song:", song.song_id, error);
       if (error.name !== "AbortError") {
@@ -186,13 +185,6 @@ const AudioPlayerComponent: React.FC<AudioPlayerProps> = ({
   const handleNext = async () => {
     if (!isAuthenticated || !token) {
       console.log("handleNext: Not authenticated or no token");
-      toast.error("Yêu cầu đăng nhập để phát bài tiếp theo", {
-        style: { background: "black", color: "white" },
-        action: {
-          label: "Đăng nhập",
-          onClick: () => (window.location.href = "/login"),
-        },
-      });
       return;
     }
 
@@ -213,9 +205,6 @@ const AudioPlayerComponent: React.FC<AudioPlayerProps> = ({
         audio.currentTime = 0;
         await audio.play();
         isPlayingRef.current = true;
-        toast.info(`Phát lại: ${song.title}`, {
-          style: { background: "black", color: "white" },
-        });
         return;
       }
 
@@ -229,7 +218,7 @@ const AudioPlayerComponent: React.FC<AudioPlayerProps> = ({
       );
       console.log("Updated current song on server:", nextSong.song_id);
 
-      setCurrentSong(nextSong); // Sử dụng trực tiếp nextSong (QueueItem)
+      setCurrentSong(nextSong);
       setCurrentSongIndex(currentIndex + 1);
       setArtistName(nextSong.artist_name);
       await fetchQueue();
@@ -238,30 +227,15 @@ const AudioPlayerComponent: React.FC<AudioPlayerProps> = ({
         "Error in handleNext:",
         error.response?.data || error.message
       );
-      toast.error(
-        error.response?.data?.message || "Không thể chuyển bài tiếp theo",
-        {
-          style: { background: "black", color: "white" },
-        }
-      );
     }
   };
 
   const handlePrevious = async () => {
     if (!isAuthenticated || !token) {
-      console.log("handlePrevious: Not authenticated or no token");
-      toast.error("Yêu cầu đăng nhập để phát bài trước đó", {
-        style: { background: "black", color: "white" },
-        action: {
-          label: "Đăng nhập",
-          onClick: () => (window.location.href = "/login"),
-        },
-      });
       return;
     }
 
     if (!song || !audioPlayerRef.current?.audio.current) {
-      console.log("No current song or audio element");
       return;
     }
 
@@ -277,9 +251,6 @@ const AudioPlayerComponent: React.FC<AudioPlayerProps> = ({
         audio.currentTime = 0;
         await audio.play();
         isPlayingRef.current = true;
-        toast.info(`Phát lại: ${song.title}`, {
-          style: { background: "black", color: "white" },
-        });
         return;
       }
 
@@ -291,9 +262,8 @@ const AudioPlayerComponent: React.FC<AudioPlayerProps> = ({
         { song_id: prevSong.song_id },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      console.log("Updated current song on server:", prevSong.song_id);
 
-      setCurrentSong(prevSong); // Sử dụng trực tiếp prevSong (QueueItem)
+      setCurrentSong(prevSong);
       setCurrentSongIndex(currentIndex - 1);
       setArtistName(prevSong.artist_name);
       await fetchQueue();
@@ -313,7 +283,6 @@ const AudioPlayerComponent: React.FC<AudioPlayerProps> = ({
 
   const handleEnded = async () => {
     if (!isAuthenticated || !token || !song) {
-      console.log("handleEnded: Not authenticated, no token, or no song");
       return;
     }
     await handleNext();
@@ -327,9 +296,6 @@ const AudioPlayerComponent: React.FC<AudioPlayerProps> = ({
           headers: { Authorization: `Bearer ${token}` },
         });
         console.log("Queue cleared successfully");
-        toast.success("Đã làm trống danh sách chờ", {
-          style: { background: "black", color: "white" },
-        });
       }
 
       setCurrentSong(null);
@@ -374,10 +340,8 @@ const AudioPlayerComponent: React.FC<AudioPlayerProps> = ({
             className={`fixed top-0 left-0 right-0 bottom-24 ${randomColor} text-white z-50 overflow-y-auto`}
           >
             <div className="flex flex-col h-full p-6">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-2xl font-bold">
-                  {song?.title || "Không có bài hát"}
-                </h2>
+              <div className="flex justify-end items-center mb-4">
+
                 <button
                   className="text-white hover:scale-110 transition-transform"
                   onClick={() => setIsExpanded(false)}
@@ -391,7 +355,7 @@ const AudioPlayerComponent: React.FC<AudioPlayerProps> = ({
                     <img
                       src={song.img}
                       alt={song.title}
-                      className="sm:w-64 sm:h-64 md:w-120 md:h-120 lg:w-128 lg:h-128 xl:w-150 xl:h-150 object-cover rounded-lg mb-6 border-3"
+                      className="sm:w-64 sm:h-64 md:w-120 md:h-120 lg:w-128 lg:h-128 xl:w-150 xl:h-150 object-cover rounded-lg mb-6 shadow-2xl"
                     />
                     <div className="text-center mb-6">
                       <h3 className="text-xl font-semibold text-white drop-shadow-lg">
@@ -400,7 +364,7 @@ const AudioPlayerComponent: React.FC<AudioPlayerProps> = ({
                       <p className="text-white text-lg">
                         {song.artist_name}
                         {song.feat_artists.length > 0
-                          ? ` feat. ${song.feat_artists.join(", ")}`
+                          ? ` feat. ${song.feat_artists.map((artist) => artist.stage_name).join(", ")}`
                           : ""}
                       </p>
                       {song.album_name && (
@@ -426,18 +390,18 @@ const AudioPlayerComponent: React.FC<AudioPlayerProps> = ({
                 alt={song.title}
                 className="w-16 h-16 object-cover rounded-md"
               />
-              <div className="text-white">
+              <div className="text-white hidden sm:block">
                 <h3 className="text-sm font-bold truncate">{song.title}</h3>
                 <p className="text-xs text-gray-300 truncate">
                   {song.artist_name}
                   {song.feat_artists.length > 0
-                    ? ` feat. ${song.feat_artists.join(", ")}`
+                    ? ` feat. ${song.feat_artists.map((artist) => artist.stage_name).join(", ")}`
                     : ""}
                 </p>
               </div>
             </>
           ) : (
-            <div className="text-white">
+            <div className="text-white hidden sm:block">
               <h3 className="text-sm font-bold">Không có bài hát</h3>
               <p className="text-xs text-gray-300">Chọn một bài hát để phát</p>
             </div>
