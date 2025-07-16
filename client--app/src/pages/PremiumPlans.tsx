@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom"; // Thêm Link
+import { Link } from "react-router-dom"; // Thêm Link
 import { Button } from "../components/ui/button";
 import { useAuth } from "../context/authContext";
 import api from "../services/api";
@@ -21,7 +22,6 @@ const formatPrice = (price: number): string => {
 
 const PremiumPlans: React.FC = () => {
   const { isAuthenticated, is_premium, premium_plan } = useAuth();
-  const navigate = useNavigate();
   const [plans, setPlans] = useState<PremiumPlan[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);

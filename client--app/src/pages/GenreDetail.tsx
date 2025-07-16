@@ -30,26 +30,20 @@ interface Song {
   listen_count: number;
 }
 
-interface RelatedAlbum {
-  album_id: number;
-  title: string;
-  release_date: string;
+interface RelatedGenre {
+  genre_id: number;
+  name: string;
   img: string | null;
-  artist_id: number;
 }
 
-interface Album {
-  album_id: number;
-  title: string;
-  release_date: string;
+interface Genre {
+  genre_id: number;
+  name: string;
   img: string | null;
-  artist_id: number;
-  artist_name: string;
-  artist_profile_picture: string | null;
   song_count: number;
   total_duration: number;
   songs: Song[];
-  related_albums: RelatedAlbum[];
+  related_genres: RelatedGenre[];
   created_at: string;
 }
 
@@ -70,10 +64,10 @@ const formatDuration = (seconds: number): string => {
   return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
 };
 
-export const AlbumDetail: React.FC = () => {
-  const { album_id } = useParams<{ album_id: string }>();
+export const GenreDetail: React.FC = () => {
+  const { genre_id } = useParams<{ genre_id: string }>();
   const navigate = useNavigate();
-  const [album, setAlbum] = useState<Album | null>(null);
+  const [genre, setGenre] = useState<Genre | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [hoveredSongId, setHoveredSongId] = useState<number | null>(null);
@@ -97,42 +91,42 @@ export const AlbumDetail: React.FC = () => {
   useEffect(() => {
     setGradient(generateRandomGradient());
 
-    const fetchAlbumDetail = async () => {
-      if (!album_id) {
-        setError('ID album không hợp lệ');
+    const fetchGenreDetail = async () => {
+      if (!genre_id) {
+        setError('ID thể loại không hợp lệ');
         setLoading(false);
         return;
       }
 
       setLoading(true);
       try {
-        console.log('Fetching album detail for album_id:', album_id);
-        const response = await api.get(`/public/albums/${album_id}`);
-        const albumData = {
-          ...response.data.data.album,
-          songs: response.data.data.album.songs || [],
-          related_albums: response.data.data.album.related_albums || []
+        console.log('Fetching genre detail for genre_id:', genre_id);
+        const response = await api.get(`/public/explore/genres/${genre_id}/songs`);
+        const genreData = {
+          ...response.data.genre,
+          songs: response.data.songs || [],
+          related_genres: response.data.related_genres || []
         };
-        console.log('Album detail fetched:', albumData);
-        setAlbum(albumData);
-        setArtistName(albumData.artist_name || '');
-        if (albumData.title) {
-          document.title = `${albumData.title} - ${APP_NAME}`;
+        console.log('Genre detail fetched:', genreData);
+        setGenre(genreData);
+        setArtistName(genreData.name || '');
+        if (genreData.name) {
+          document.title = `${genreData.name} - ${APP_NAME}`;
         }
       } catch (err: any) {
-        console.error('Error fetching album:', err);
+        console.error('Error fetching genre:', err);
         if (err.response?.status === 404) {
-          setError('Không tìm thấy album');
+          setError('Không tìm thấy thể loại');
         } else {
-          setError('Không thể tải chi tiết album');
+          setError('Không thể tải chi tiết thể loại');
         }
       } finally {
         setLoading(false);
       }
     };
 
-    fetchAlbumDetail();
-  }, [album_id, setArtistName]);
+    fetchGenreDetail();
+  }, [genre_id, setArtistName]);
 
   const fetchUserPlaylists = async () => {
     if (!isAuthenticated || !userId) {
@@ -175,14 +169,16 @@ export const AlbumDetail: React.FC = () => {
       setIsModalOpen(false);
     } catch (err: any) {
       console.error('Error adding song to playlist:', err);
-
+      toast.error('Không thể thêm bài hát vào playlist', {
+        style: { background: 'black', color: 'white' },
+      });
     }
   };
 
   const handleSongClick = async (song: Song, index: number, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!isAuthenticated || !userId) {
-      toast.error('Vui lòng đăng nhập để phát bài hat', {
+      toast.error('Vui lòng đăng nhập để phát bài hát', {
         action: {
           label: 'Đăng nhập',
           onClick: () => navigate('/login'),
@@ -194,7 +190,7 @@ export const AlbumDetail: React.FC = () => {
     try {
       console.log('Handling song click:', { song_id: song.song_id, title: song.title });
       await addToQueue(song, true);
-      const queueItems: QueueItem[] = (album?.songs || []).map((s, i) => ({
+      const queueItems: QueueItem[] = (genre?.songs || []).map((s, i) => ({
         ...s,
         position: i + 1,
         is_current: i === index,
@@ -254,12 +250,14 @@ export const AlbumDetail: React.FC = () => {
       });
       return;
     }
-    if (!album?.songs || album.songs.length === 0) {
-
+    if (!genre?.songs || genre.songs.length === 0) {
+      toast.error('Danh sách bài hát trống', {
+        style: { background: 'black', color: 'white' },
+      });
       return;
     }
     try {
-      const songIds = album.songs.map(song => song.song_id);
+      const songIds = genre.songs.map(song => song.song_id);
       console.log('Handling play content with song_ids:', songIds);
       await playContent(songIds);
     } catch (error: any) {
@@ -270,8 +268,8 @@ export const AlbumDetail: React.FC = () => {
     }
   };
 
-  const handleRelatedAlbumClick = (album: RelatedAlbum) => {
-    navigate(`/albums/${album.album_id}`);
+  const handleRelatedGenreClick = (genre: RelatedGenre) => {
+    navigate(`/explore/genres/${genre.genre_id}/songs`);
   };
 
   const handleDownloadClick = async (song: Song, e: React.MouseEvent) => {
@@ -324,9 +322,9 @@ export const AlbumDetail: React.FC = () => {
   };
 
   if (error) return <div className="text-red-500 text-center p-4">Lỗi: {error}</div>;
-  if (!album) return <div className="text-center p-4">Không tìm thấy album</div>;
+  if (!genre) return <div className="text-center p-4">Không tìm thấy thể loại</div>;
 
-  const { title, img, artist_name, release_date, song_count, total_duration, songs, related_albums } = album;
+  const { name, img, song_count, total_duration, songs, related_genres } = genre;
 
   return (
     <div className="min-h-screen text-white rounded-lg">
@@ -349,7 +347,7 @@ export const AlbumDetail: React.FC = () => {
                 {img ? (
                   <img
                     src={img}
-                    alt={title}
+                    alt={name}
                     className="w-40 h-40 sm:w-52 sm:h-52 object-cover rounded-sm"
                     loading="lazy"
                   />
@@ -360,10 +358,10 @@ export const AlbumDetail: React.FC = () => {
                 )}
               </div>
               <div className="text-center sm:text-start mt-2 sm:mt-0">
-                <h2 className="text-xs sm:text-sm text-white">Album</h2>
-                <h1 className="text-4xl sm:text-6xl md:text-7xl font-bold uppercase line-clamp-2">{title}</h1>
+                <h2 className="text-xs sm:text-sm text-white">Thể loại</h2>
+                <h1 className="text-4xl sm:text-6xl md:text-8xl font-bold uppercase line-clamp-2">{name}</h1>
                 <p className="text-xs sm:text-sm text-gray-400 mt-2">
-                  {artist_name} • {release_date.split('-')[0]} • {song_count} bài hát • {formatDuration(total_duration)}
+                  {song_count} bài hát • {formatDuration(total_duration)}
                 </p>
               </div>
             </div>
@@ -381,7 +379,7 @@ export const AlbumDetail: React.FC = () => {
               </div>
             </div>
           </div>
-          <div className="p-4 sm:p-6 mt-2">
+          <div className="p-4 sm:p-6">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
                 <tbody>
@@ -487,28 +485,25 @@ export const AlbumDetail: React.FC = () => {
                 </tbody>
               </table>
             </div>
-            {related_albums.length > 0 && (
+            {related_genres.length > 0 && (
               <div className="mt-8">
-                <h2 className="text-xl sm:text-2xl font-semibold mb-3">Album khác của {artist_name}</h2>
+                <h2 className="text-xl sm:text-2xl font-semibold mb-3">Thể loại liên quan</h2>
                 <div className="flex flex-wrap gap-2">
-                  {related_albums.map((relatedAlbum) => (
+                  {related_genres.map((relatedGenre) => (
                     <div
-                      key={relatedAlbum.album_id}
+                      key={relatedGenre.genre_id}
                       className="flex flex-col items-center p-2 hover:bg-neutral-800 rounded-lg cursor-pointer transition-colors"
-                      onClick={() => handleRelatedAlbumClick(relatedAlbum)}
+                      onClick={() => handleRelatedGenreClick(relatedGenre)}
                     >
                       <img
-                        src={relatedAlbum.img || 'https://via.placeholder.com/144'}
-                        alt={relatedAlbum.title}
+                        src={relatedGenre.img || 'https://via.placeholder.com/144'}
+                        alt={relatedGenre.name}
                         className="w-32 h-32 sm:w-36 sm:h-36 rounded mb-2 object-cover"
                         loading="lazy"
                       />
                       <div className="text-center">
                         <span className="text-white font-medium text-sm sm:text-base w-full line-clamp-2">
-                          {relatedAlbum.title}
-                        </span>
-                        <span className="text-gray-400 text-xs">
-                          {relatedAlbum.release_date.split('-')[0]}
+                          {relatedGenre.name}
                         </span>
                       </div>
                     </div>

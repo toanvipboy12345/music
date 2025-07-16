@@ -195,6 +195,43 @@ export const CollectionDetail: React.FC = () => {
     }
   };
 
+  const handleDownloadClick = async (song: Song, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!isAuthenticated || !userId) {
+      toast.error('Vui lòng đăng nhập để tải bài hát', {
+        action: {
+          label: 'Đăng nhập',
+          onClick: () => navigate('/login'),
+        },
+        style: { background: 'black', color: 'white' },
+      });
+      return;
+    }
+    try {
+      console.log('Downloading song:', song.song_id, song.title);
+      const response = await api.get(`/user/songs/${song.song_id}/download`, {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: 'blob', // Quan trọng để tải file binary
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `${song.song_id}_${song.title.replace(/[^a-zA-Z0-9]/g, '_')}.mp3`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success('Đã tải bài hát thành công', {
+        style: { background: 'black', color: 'white' },
+      });
+    } catch (error: any) {
+      console.error('Error downloading song:', error);
+      toast.error(error.response?.data?.message || 'Không thể tải bài hát', {
+        style: { background: 'black', color: 'white' },
+      });
+    }
+  };
+
   const formatDuration = (seconds: number): string => {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
@@ -393,6 +430,9 @@ export const CollectionDetail: React.FC = () => {
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={(e) => handleAddToQueueClick(song, e)}>
                             Thêm vào danh sách chờ
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={(e) => handleDownloadClick(song, e)}>
+                            Tải xuống
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>

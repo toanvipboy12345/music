@@ -17,16 +17,16 @@ interface Song {
   song_id: number;
   title: string;
   duration: number;
+  release_date: string;
   audio_file_url: string;
   img: string;
   artist_id: number;
   artist_name: string;
   feat_artists: { artist_id: number; stage_name: string }[];
   album_name: string | null;
-  release_date?: string;
-  is_downloadable?: boolean;
-  created_at?: string;
-  listen_count?: number;
+  is_downloadable: boolean;
+  created_at: string;
+  listen_count: number;
 }
 
 interface Album {
@@ -333,7 +333,7 @@ export const ArtistDetail: React.FC = () => {
                       <img
                         src={artist.profile_picture}
                         alt={artist.stage_name}
-                        className="w-32 h-32 sm:w-52 sm:h-52 object-contain rounded-full"
+                        className="w-32 h-32 sm:w-52 sm:h-52 object-fill rounded-full"
                         loading="lazy"
                       />
                     ) : (
@@ -426,23 +426,22 @@ export const ArtistDetail: React.FC = () => {
                                 >
                                   {song.artist_name}
                                 </Link>
-                                {song.feat_artists?.length > 0 && (
-                                  <span>
-                                    {' '}feat.{' '}
-                                    {song.feat_artists.map((featArtist, idx) => (
-                                      <span key={featArtist.artist_id}>
-                                        <Link
-                                          to={`/artists/${featArtist.artist_id}`}
-                                          className="hover:underline"
-                                          onClick={(e) => e.stopPropagation()}
-                                        >
-                                          {featArtist.stage_name}
-                                        </Link>
-                                        {idx < song.feat_artists.length - 1 ? ', ' : ''}
-                                      </span>
-                                    ))}
-                                  </span>
-                                )}
+                              {song.feat_artists.length > 0 && (
+                                <span>
+                                  {' '}feat.{' '}
+                                  {song.feat_artists.map((featArtist, idx) => (
+                                    <span key={featArtist.artist_id}>
+                                      <Link
+                                        to={`/artists/${featArtist.artist_id}`}
+                                        className="hover:underline"
+                                      >
+                                        {featArtist.stage_name}
+                                      </Link>
+                                      {idx < song.feat_artists.length - 1 ? ', ' : ''}
+                                    </span>
+                                  ))}
+                                </span>
+                              )}
                               </span>
                             </div>
                           </div>

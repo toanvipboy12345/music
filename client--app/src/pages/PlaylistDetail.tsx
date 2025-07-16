@@ -8,6 +8,7 @@ import { HeartIcon, HeartFilledIcon } from '@radix-ui/react-icons';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Toaster, toast } from "sonner";
 import api from '../services/api';
 import { useAudio } from '../context/AudioContext';
 import { useAuth } from '../context/authContext';
@@ -50,7 +51,7 @@ interface PlaylistDetail {
 
 export const PlaylistDetail: React.FC = () => {
   const { playlistId } = useParams<{ playlistId: string }>();
-  const { userId, token, isAuthenticated } = useAuth();
+  const { userId, token, isAuthenticated, is_premium } = useAuth();
   const navigate = useNavigate();
   const [playlistDetail, setPlaylistDetail] = useState<PlaylistDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -136,8 +137,13 @@ export const PlaylistDetail: React.FC = () => {
   const handleSongClick = async (song: Song, index: number, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!isAuthenticated || !userId) {
-      setError('Vui lòng đăng nhập để phát bài hát');
-      navigate('/login');
+      toast.error('Vui lòng đăng nhập để phát bài hát', {
+        action: {
+          label: 'Đăng nhập',
+          onClick: () => navigate('/login'),
+        },
+        style: { background: 'black', color: 'white' },
+      });
       return;
     }
 
@@ -160,19 +166,28 @@ export const PlaylistDetail: React.FC = () => {
     } catch (error: unknown) {
       const err = error as AxiosError<{ message?: string }>;
       console.error('Lỗi khi phát bài hát:', err.response?.data?.message || err.message);
-      setError(err.response?.data?.message || 'Không thể phát bài hát');
+      toast.error(err.response?.data?.message || 'Không thể phát bài hát', {
+        style: { background: 'black', color: 'white' },
+      });
     }
   };
 
   const handlePlayPlaylist = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!isAuthenticated || !userId) {
-      setError('Vui lòng đăng nhập để phát danh sách');
-      navigate('/login');
+      toast.error('Vui lòng đăng nhập để phát danh sách', {
+        action: {
+          label: 'Đăng nhập',
+          onClick: () => navigate('/login'),
+        },
+        style: { background: 'black', color: 'white' },
+      });
       return;
     }
     if (!playlistDetail?.songs || playlistDetail.songs.length === 0) {
-      setError('Danh sách bài hát trống');
+      toast.error('Danh sách bài hát trống', {
+        style: { background: 'black', color: 'white' },
+      });
       return;
     }
 
@@ -183,14 +198,21 @@ export const PlaylistDetail: React.FC = () => {
     } catch (error: unknown) {
       const err = error as AxiosError<{ message?: string }>;
       console.error('Lỗi khi phát playlist:', err.response?.data?.message || err.message);
-      setError(err.response?.data?.message || 'Không thể phát danh sách');
+      toast.error(err.response?.data?.message || 'Không thể phát danh sách', {
+        style: { background: 'black', color: 'white' },
+      });
     }
   };
 
   const handleDeletePlaylist = async () => {
     if (!isAuthenticated || !userId || !playlistId) {
-      setError('Vui lòng đăng nhập để xóa playlist');
-      navigate('/login');
+      toast.error('Vui lòng đăng nhập để xóa playlist', {
+        action: {
+          label: 'Đăng nhập',
+          onClick: () => navigate('/login'),
+        },
+        style: { background: 'black', color: 'white' },
+      });
       return;
     }
 
@@ -203,21 +225,31 @@ export const PlaylistDetail: React.FC = () => {
         setIsDeleteModalOpen(false);
         setIsLoading(false);
         navigate('/');
+        toast.success('Đã xóa playlist thành công', {
+          style: { background: 'black', color: 'white' },
+        });
       }, 1000);
     } catch (error: unknown) {
       const err = error as AxiosError<{ message?: string }>;
       console.error('Lỗi khi xóa playlist:', err.response?.data?.message || err.message);
       setTimeout(() => {
         setIsLoading(false);
-        setError(err.response?.data?.message || 'Lỗi khi xóa playlist');
+        toast.error(err.response?.data?.message || 'Lỗi khi xóa playlist', {
+          style: { background: 'black', color: 'white' },
+        });
       }, 1000);
     }
   };
 
   const handleLikePlaylist = async () => {
     if (!isAuthenticated || !userId || !playlistId) {
-      setError('Vui lòng đăng nhập để thích playlist');
-      navigate('/login');
+      toast.error('Vui lòng đăng nhập để thích playlist', {
+        action: {
+          label: 'Đăng nhập',
+          onClick: () => navigate('/login'),
+        },
+        style: { background: 'black', color: 'white' },
+      });
       return;
     }
 
@@ -227,11 +259,17 @@ export const PlaylistDetail: React.FC = () => {
           headers: { Authorization: `Bearer ${token}` },
         });
         setHasLiked(false);
+        toast.success('Đã bỏ thích playlist', {
+          style: { background: 'black', color: 'white' },
+        });
       } else {
         await api.post(`/user/like-playlist/${playlistId}`, {}, {
           headers: { Authorization: `Bearer ${token}` },
         });
         setHasLiked(true);
+        toast.success('Đã thích playlist', {
+          style: { background: 'black', color: 'white' },
+        });
       }
 
       const response = await api.get(`/user/playlists/user/${userId}/${playlistId}`, {
@@ -248,25 +286,86 @@ export const PlaylistDetail: React.FC = () => {
     } catch (error: unknown) {
       const err = error as AxiosError<{ message?: string }>;
       console.error('Lỗi khi xử lý like/unlike playlist:', err.response?.data?.message || err.message);
-      setError(err.response?.data?.message || 'Lỗi khi xử lý like/unlike playlist');
+      toast.error(err.response?.data?.message || 'Lỗi khi xử lý like/unlike playlist', {
+        style: { background: 'black', color: 'white' },
+      });
     }
   };
 
   const handleAddToQueueClick = async (song: Song, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!isAuthenticated || !userId) {
-      setError('Vui lòng đăng nhập để thêm vào danh sách chờ');
-      navigate('/login');
+      toast.error('Vui lòng đăng nhập để thêm vào danh sách chờ', {
+        action: {
+          label: 'Đăng nhập',
+          onClick: () => navigate('/login'),
+        },
+        style: { background: 'black', color: 'white' },
+      });
       return;
     }
     try {
       console.log('Adding song to queue:', song.song_id, song.title);
       await addToQueue(song, false);
-      setError('Đã thêm bài hát vào danh sách chờ');
+      toast.success('Đã thêm bài hát vào danh sách chờ', {
+        style: { background: 'black', color: 'white' },
+      });
     } catch (error: unknown) {
       const err = error as AxiosError<{ message?: string }>;
       console.error('Error adding to queue:', err.response?.data?.message || err.message);
-      setError(err.response?.data?.message || 'Không thể thêm bài hát vào danh sách chờ');
+      toast.error(err.response?.data?.message || 'Không thể thêm bài hát vào danh sách chờ', {
+        style: { background: 'black', color: 'white' },
+      });
+    }
+  };
+
+  const handleDownloadClick = async (song: Song, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!isAuthenticated || !userId) {
+      toast.error('Vui lòng đăng nhập để tải bài hát', {
+        action: {
+          label: 'Đăng nhập',
+          onClick: () => navigate('/login'),
+        },
+        style: { background: 'black', color: 'white' },
+      });
+      return;
+    }
+    if (!is_premium) {
+      toast.error('Vui lòng nâng cấp lên tài khoản Premium để tải bài hát', {
+        style: { background: 'black', color: 'white' },
+      });
+      return;
+    }
+    if (!song.is_downloadable) {
+      toast.error('Bài hát này không thể tải xuống', {
+        style: { background: 'black', color: 'white' },
+      });
+      return;
+    }
+    try {
+      console.log('Downloading song:', song.song_id, song.title);
+      const response = await api.get(`/user/songs/${song.song_id}/download`, {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: 'blob',
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `${song.song_id}_${song.title.replace(/[^a-zA-Z0-9]/g, '_')}.mp3`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success('Đã tải bài hát thành công', {
+        style: { background: 'black', color: 'white' },
+      });
+    } catch (error: unknown) {
+      const err = error as AxiosError<{ message?: string }>;
+      console.error('Error downloading song:', err.response?.data?.message || err.message);
+      toast.error(err.response?.data?.message || 'Không thể tải bài hát', {
+        style: { background: 'black', color: 'white' },
+      });
     }
   };
 
@@ -277,10 +376,11 @@ export const PlaylistDetail: React.FC = () => {
 
   return (
     <div className="min-h-screen text-white rounded-lg">
+      <Toaster richColors position="top-right" />
       {loading ? (
         <div className="space-y-4">
           <Skeleton height={200} className="w-full rounded-lg" />
-          <Skeleton height={40} className="w-1/2" />
+          <Skeleton height={40} className="w-full sm:w-1/2" />
           <div className="space-y-2">
             {[...Array(3)].map((_, index) => (
               <Skeleton key={index} height={50} className="w-full" />
@@ -289,155 +389,160 @@ export const PlaylistDetail: React.FC = () => {
         </div>
       ) : (
         <div>
-          <div className={`${gradient} h-64 mb-4 rounded-t-lg`}>
-            <div className="flex flex-col h-full">
-              <div className="flex gap-4 items-center justify-start flex-1 py-4 px-8">
-                <div>
-                  {img ? (
-                    <img src={img} alt={title} className="w-52 h-52 object-cover rounded-sm" loading="lazy" />
-                  ) : (
-                    <div className="w-52 h-52 bg-neutral-700 flex items-center justify-center rounded-sm">
-                      <span className="text-neutral-400">No Image</span>
-                    </div>
-                  )}
-                </div>
-                <div className="h-auto text-start ml-1.5">
-                  <h2 className="text-sm text-white font-medium">Playlist</h2>
-                  <h1 className="text-8xl font-bold uppercase">{title}</h1>
-                  <p className="text-sm text-white font-medium">{description || 'Không có mô tả'}</p>
-                  <p className="text-sm text-gray-400">Tạo bởi: {username}</p>
-                </div>
+          <div className={`${gradient} h-auto sm:h-64 mb-4 rounded-t-lg`}>
+            <div className="flex flex-col sm:flex-row gap-4 items-center justify-start flex-1 py-4 px-4 sm:px-8">
+              <div className="flex-shrink-0">
+                {img ? (
+                  <img src={img} alt={title} className="w-40 h-40 sm:w-52 sm:h-52 object-cover rounded-sm" loading="lazy" />
+                ) : (
+                  <div className="w-40 h-40 sm:w-52 sm:h-52 bg-neutral-700 flex items-center justify-center rounded-sm">
+                    <span className="text-neutral-400 text-sm">No Image</span>
+                  </div>
+                )}
               </div>
-              <div className="py-2 px-7 flex items-center justify-between mb-4">
-                <div className="flex items-center space-x-4">
-                  <button onClick={handlePlayPlaylist} className="hover:text-gray-300 active:text-gray-200">
-                    <PlayIcon className="w-6 h-6 text-white" />
-                  </button>
-                  {!isOwner && (
-                    <div className="flex items-center space-x-2">
-                      <button onClick={handleLikePlaylist} className="hover:text-gray-300 active:text-gray-200 mr-0.5">
-                        {hasLiked ? (
-                          <HeartFilledIcon className="w-6 h-6 text-red-500" />
-                        ) : (
-                          <HeartIcon className="w-6 h-6 text-white" />
-                        )}
+              <div className="text-center sm:text-start mt-2 sm:mt-0">
+                <h2 className="text-xs sm:text-sm text-white font-medium">Playlist</h2>
+                <h1 className="text-4xl sm:text-6xl md:text-7xl font-bold uppercase line-clamp-2">{title}</h1>
+                <p className="text-xs sm:text-sm text-white font-medium">{description || 'Không có mô tả'}</p>
+                <p className="text-xs sm:text-sm text-gray-400">Tạo bởi: {username}</p>
+              </div>
+            </div>
+            <div className="py-2 px-4 sm:px-7 flex flex-col sm:flex-row items-center justify-between mb-4 space-y-2 sm:space-y-0">
+              <div className="flex items-center space-x-4">
+                <button onClick={handlePlayPlaylist} className="hover:text-gray-300 active:text-gray-200">
+                  <PlayIcon className="w-6 h-6 text-white" />
+                </button>
+                {!isOwner && (
+                  <div className="flex items-center space-x-2">
+                    <button onClick={handleLikePlaylist} className="hover:text-gray-300 active:text-gray-200 mr-0.5">
+                      {hasLiked ? (
+                        <HeartFilledIcon className="w-6 h-6 text-red-500" />
+                      ) : (
+                        <HeartIcon className="w-6 h-6 text-white" />
+                      )}
+                    </button>
+                    <span className="text-xs sm:text-sm text-gray-400">{like_count}</span>
+                  </div>
+                )}
+                <ArrowDownTrayIcon className="w-6 h-6 text-white hover:text-gray-300 active:text-gray-200" />
+                {isOwner && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button className="hover:text-gray-300 active:text-gray-200">
+                        <EllipsisHorizontalIcon className="w-6 h-6 text-white" />
                       </button>
-                      <span className="text-sm text-gray-400">{like_count}</span>
-                    </div>
-                  )}
-                  <ArrowDownTrayIcon className="w-6 h-6 text-white hover:text-gray-300 active:text-gray-200" />
-                  {isOwner && (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <button className="hover:text-gray-300 active:text-gray-200">
-                          <EllipsisHorizontalIcon className="w-6 h-6 text-white" />
-                        </button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent className="z-50 bg-neutral-800 text-white border-neutral-700">
-                        <DropdownMenuItem
-                          onClick={() => setIsDeleteModalOpen(true)}
-                          className="hover:bg-neutral-700 focus:bg-neutral-700"
-                        >
-                          <TrashIcon className="w-5 h-5 mr-2 hover:text-gray-300 active:text-gray-200" />
-                          Xóa playlist
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
-                </div>
-                <div className="flex items-center space-x-2">
-                  <QueueListIcon className="w-6 h-6 text-white hover:text-gray-300 active:text-gray-200" />
-                  <span className="text-sm text-gray-400">Danh sách</span>
-                </div>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="z-50 bg-neutral-800 text-white border-neutral-700">
+                      <DropdownMenuItem
+                        onClick={() => setIsDeleteModalOpen(true)}
+                        className="hover:bg-neutral-700 focus:bg-neutral-700"
+                      >
+                        <TrashIcon className="w-5 h-5 mr-2 hover:text-gray-300 active:text-gray-200" />
+                        Xóa playlist
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </div>
+              <div className="flex items-center space-x-2">
+                <QueueListIcon className="w-6 h-6 text-white hover:text-gray-300 active:text-gray-200" />
+                <span className="text-xs sm:text-sm text-gray-400">Danh sách</span>
               </div>
             </div>
           </div>
-          <div className="p-4 pt-8">
-            <table className="w-full text-left">
-              <tbody>
-                {songs.map((song, index) => (
-                  <tr
-                    key={song.song_id}
-                    className="hover:bg-zinc-800 rounded-lg cursor-pointer group"
-                    onMouseEnter={() => setHoveredSongId(song.song_id)}
-                    onMouseLeave={() => setHoveredSongId(null)}
-                  >
-                    <td className="py-2 px-4">
-                      <div className="flex items-center">
-                        <div className="relative w-12 h-12 mr-4">
-                          <img
-                            src={song.img}
-                            alt={song.title}
-                            className={`w-12 h-12 object-cover rounded transition-opacity duration-200 ${
-                              hoveredSongId === song.song_id ? 'opacity-75' : 'opacity-100'
-                            }`}
-                            loading="lazy"
-                          />
-                          <div
-                            className={`absolute inset-0 flex items-center justify-center transition-opacity duration-200 ${
-                              hoveredSongId === song.song_id ? 'opacity-100' : 'opacity-0'
-                            }`}
-                          >
-                            <button onClick={(e) => handleSongClick(song, index, e)}>
-                              <PlayIcon className="w-6 h-6 text-white hover:text-gray-300 active:text-gray-200" />
-                            </button>
+          <div className="p-4 sm:p-6 mt-2">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <tbody>
+                  {songs.map((song, index) => (
+                    <tr
+                      key={song.song_id}
+                      className="hover:bg-zinc-800 rounded-lg cursor-pointer group"
+                      onMouseEnter={() => setHoveredSongId(song.song_id)}
+                      onMouseLeave={() => setHoveredSongId(null)}
+                    >
+                      <td className="py-2 px-2 sm:px-4">
+                        <div className="flex items-center">
+                          <div className="relative w-10 h-10 sm:w-12 sm:h-12 mr-2 sm:mr-4">
+                            <img
+                              src={song.img}
+                              alt={song.title}
+                              className={`w-full h-full object-cover rounded transition-opacity duration-200 ${
+                                hoveredSongId === song.song_id ? 'opacity-75' : 'opacity-100'
+                              }`}
+                              loading="lazy"
+                            />
+                            <div
+                              className={`absolute inset-0 flex items-center justify-center transition-opacity duration-200 ${
+                                hoveredSongId === song.song_id ? 'opacity-100' : 'opacity-0'
+                              }`}
+                            >
+                              <button onClick={(e) => handleSongClick(song, index, e)}>
+                                <PlayIcon className="w-6 h-6 text-white hover:text-gray-300 active:text-gray-200" />
+                              </button>
+                            </div>
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-sm sm:text-base text-white">{song.title}</span>
+                            <span className="text-xs sm:text-sm text-gray-400 line-clamp-1">
+                              <Link
+                                to={`/artists/${song.artist_id}`}
+                                className="hover:underline"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {song.artist_name}
+                              </Link>
+                              {song.feat_artists.length > 0 && (
+                                <span>
+                                  {' '}feat.{' '}
+                                  {song.feat_artists.map((featArtist, idx) => (
+                                    <span key={featArtist.artist_id}>
+                                      <Link
+                                        to={`/artists/${featArtist.artist_id}`}
+                                        className="hover:underline"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        {featArtist.stage_name}
+                                      </Link>
+                                      {idx < song.feat_artists.length - 1 ? ', ' : ''}
+                                    </span>
+                                  ))}
+                                </span>
+                              )}
+                            </span>
                           </div>
                         </div>
-                        <div className="flex flex-col">
-                          <span className="text-white">{song.title}</span>
-                          <span className="text-gray-400 text-sm line-clamp-1">
-                            <Link
-                              to={`/artists/${song.artist_id}`}
-                              className="hover:underline"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              {song.artist_name}
-                            </Link>
-                            {song.feat_artists.length > 0 && (
-                              <span>
-                                {' '}feat.{' '}
-                                {song.feat_artists.map((featArtist, idx) => (
-                                  <span key={featArtist.artist_id}>
-                                    <Link
-                                      to={`/artists/${featArtist.artist_id}`}
-                                      className="hover:underline"
-                                      onClick={(e) => e.stopPropagation()}
-                                    >
-                                      {featArtist.stage_name}
-                                    </Link>
-                                    {idx < song.feat_artists.length - 1 ? ', ' : ''}
-                                  </span>
-                                ))}
-                              </span>
+                      </td>
+                      <td className="py-2 px-2 sm:px-4 text-xs sm:text-sm text-gray-400 hidden sm:table-cell">
+                        {song.album_name || 'Đang cập nhật'}
+                      </td>
+                      <td className="py-2 px-2 sm:px-4 text-xs sm:text-sm text-gray-400">
+                        {formatDuration(song.duration)}
+                      </td>
+                      <td className="py-2 px-2 sm:px-4 text-gray-400">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button>
+                              <EllipsisHorizontalIcon className="w-4 sm:w-5 h-4 sm:h-5 hover:text-gray-300 active:text-gray-200" />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent className="z-50 bg-neutral-800 text-white border-neutral-700">
+                            <DropdownMenuItem onClick={(e) => handleAddToQueueClick(song, e)}>
+                              Thêm vào danh sách chờ
+                            </DropdownMenuItem>
+                            {is_premium && song.is_downloadable && (
+                              <DropdownMenuItem onClick={(e) => handleDownloadClick(song, e)}>
+                                Tải xuống
+                              </DropdownMenuItem>
                             )}
-                          </span>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-2 px-4 text-gray-400">
-                      {song.album_name || 'Đang cập nhật'}
-                    </td>
-                    <td className="py-2 px-4 text-gray-400">
-                      {formatDuration(song.duration)}
-                    </td>
-                    <td className="py-2 px-4 text-gray-400">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button>
-                            <EllipsisHorizontalIcon className="w-5 h-5 hover:text-gray-300 active:text-gray-200" />
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent className="z-50 bg-neutral-800 text-white border-neutral-700">
-                          <DropdownMenuItem onClick={(e) => handleAddToQueueClick(song, e)}>
-                            Thêm vào danh sách chờ
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
           <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
             <DialogContent variant="dark" className="sm:max-w-[425px]">

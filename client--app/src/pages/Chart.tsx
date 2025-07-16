@@ -1,12 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useEffect, useState } from 'react';
-import { Link, useParams, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import Skeleton from 'react-loading-skeleton';
 import 'react-loading-skeleton/dist/skeleton.css';
-import { PlayIcon, ArrowDownTrayIcon, EllipsisHorizontalIcon, QueueListIcon } from '@heroicons/react/24/solid';
+import { PlayIcon, EllipsisHorizontalIcon, QueueListIcon, ArrowUpIcon, ArrowDownIcon } from '@heroicons/react/24/solid';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Toaster, toast } from "sonner";
+import * as Tooltip from '@radix-ui/react-tooltip';
 import api from '../services/api';
 import { useAudio } from '../context/AudioContext';
 import { useAuth } from '../context/authContext';
@@ -28,29 +29,16 @@ interface Song {
   is_downloadable: boolean;
   created_at: string;
   listen_count: number;
+  rank: number;
+  rank_change: string; // Đổi sang string để khớp với backend
 }
 
-interface RelatedAlbum {
-  album_id: number;
-  title: string;
-  release_date: string;
-  img: string | null;
-  artist_id: number;
-}
-
-interface Album {
-  album_id: number;
-  title: string;
-  release_date: string;
-  img: string | null;
-  artist_id: number;
-  artist_name: string;
-  artist_profile_picture: string | null;
-  song_count: number;
-  total_duration: number;
+interface ChartData {
+  image: string;
+  color: string;
+  description: string;
+  total_songs: number;
   songs: Song[];
-  related_albums: RelatedAlbum[];
-  created_at: string;
 }
 
 interface QueueItem extends Song {
@@ -70,69 +58,134 @@ const formatDuration = (seconds: number): string => {
   return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
 };
 
-export const AlbumDetail: React.FC = () => {
-  const { album_id } = useParams<{ album_id: string }>();
+const formatRankChange = (rankChange: string) => {
+  let tooltipText = '';
+  if (rankChange === 'new') {
+    tooltipText = 'Bài hát mới trong bảng xếp hạng';
+    return (
+      <Tooltip.Provider>
+        <Tooltip.Root>
+          <Tooltip.Trigger asChild>
+            <span className="text-green-500 font-semibold">New</span>
+          </Tooltip.Trigger>
+          <Tooltip.Portal>
+            <Tooltip.Content className="bg-neutral-800 text-white text-xs p-2 rounded shadow-lg" sideOffset={5}>
+              {tooltipText}
+              <Tooltip.Arrow className="fill-neutral-800" />
+            </Tooltip.Content>
+          </Tooltip.Portal>
+        </Tooltip.Root>
+      </Tooltip.Provider>
+    );
+  } else if (rankChange === '0') {
+    tooltipText = 'Không thay đổi thứ hạng';
+    return (
+      <Tooltip.Provider>
+        <Tooltip.Root>
+          <Tooltip.Trigger asChild>
+            <span className="text-gray-400">-</span>
+          </Tooltip.Trigger>
+          <Tooltip.Portal>
+            <Tooltip.Content className="bg-neutral-800 text-white text-xs p-2 rounded shadow-lg" sideOffset={5}>
+              {tooltipText}
+              <Tooltip.Arrow className="fill-neutral-800" />
+            </Tooltip.Content>
+          </Tooltip.Portal>
+        </Tooltip.Root>
+      </Tooltip.Provider>
+    );
+  } else if (rankChange.startsWith('+')) {
+    tooltipText = `Tăng ${rankChange.slice(1)} hạng so với 5 phút trước`;
+    return (
+      <Tooltip.Provider>
+        <Tooltip.Root>
+          <Tooltip.Trigger asChild>
+            <span className="text-green-500 flex items-center">
+              <ArrowUpIcon className="w-4 h-4 mr-1" /> {rankChange.slice(1)}
+            </span>
+          </Tooltip.Trigger>
+          <Tooltip.Portal>
+            <Tooltip.Content className="bg-neutral-800 text-white text-xs p-2 rounded shadow-lg" sideOffset={5}>
+              {tooltipText}
+              <Tooltip.Arrow className="fill-neutral-800" />
+            </Tooltip.Content>
+          </Tooltip.Portal>
+        </Tooltip.Root>
+      </Tooltip.Provider>
+    );
+  } else if (rankChange.startsWith('-')) {
+    tooltipText = `Giảm ${rankChange.slice(1)} hạng so với 5 phút trước`;
+    return (
+      <Tooltip.Provider>
+        <Tooltip.Root>
+          <Tooltip.Trigger asChild>
+            <span className="text-red-500 flex items-center">
+              <ArrowDownIcon className="w-4 h-4 mr-1" /> {rankChange.slice(1)}
+            </span>
+          </Tooltip.Trigger>
+          <Tooltip.Portal>
+            <Tooltip.Content className="bg-neutral-800 text-white text-xs p-2 rounded shadow-lg" sideOffset={5}>
+              {tooltipText}
+              <Tooltip.Arrow className="fill-neutral-800" />
+            </Tooltip.Content>
+          </Tooltip.Portal>
+        </Tooltip.Root>
+      </Tooltip.Provider>
+    );
+  }
+  return (
+    <Tooltip.Provider>
+      <Tooltip.Root>
+        <Tooltip.Trigger asChild>
+          <span className="text-gray-400">-</span>
+        </Tooltip.Trigger>
+        <Tooltip.Portal>
+          <Tooltip.Content className="bg-neutral-800 text-white text-xs p-2 rounded shadow-lg" sideOffset={5}>
+            Không có dữ liệu thay đổi thứ hạng
+            <Tooltip.Arrow className="fill-neutral-800" />
+          </Tooltip.Content>
+        </Tooltip.Portal>
+      </Tooltip.Root>
+    </Tooltip.Provider>
+  );
+};
+
+export const Chart: React.FC = () => {
   const navigate = useNavigate();
-  const [album, setAlbum] = useState<Album | null>(null);
+  const [chart, setChart] = useState<ChartData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [hoveredSongId, setHoveredSongId] = useState<number | null>(null);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [selectedSongId, setSelectedSongId] = useState<number | null>(null);
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
-  const { addToQueue, setPlaylist, setCurrentSongIndex, setArtistName, playContent } = useAudio();
+  const { addToQueue, setPlaylist, setCurrentSongIndex, playContent } = useAudio();
   const { isAuthenticated, userId, token, is_premium } = useAuth();
 
-  const generateRandomGradient = () => {
-    const colors = [
-      'purple-600', 'blue-600', 'red-600', 'green-600', 'pink-600',
-      'indigo-600', 'teal-600', 'cyan-600', 'orange-600', 'violet-600'
-    ];
-    const randomColor = colors[Math.floor(Math.random() * colors.length)];
-    return `bg-gradient-to-b from-${randomColor} to-neutral-900`;
-  };
-
-  const [gradient, setGradient] = useState<string>(generateRandomGradient());
-
   useEffect(() => {
-    setGradient(generateRandomGradient());
-
-    const fetchAlbumDetail = async () => {
-      if (!album_id) {
-        setError('ID album không hợp lệ');
-        setLoading(false);
-        return;
-      }
-
+    const fetchChart = async () => {
       setLoading(true);
       try {
-        console.log('Fetching album detail for album_id:', album_id);
-        const response = await api.get(`/public/albums/${album_id}`);
-        const albumData = {
-          ...response.data.data.album,
-          songs: response.data.data.album.songs || [],
-          related_albums: response.data.data.album.related_albums || []
-        };
-        console.log('Album detail fetched:', albumData);
-        setAlbum(albumData);
-        setArtistName(albumData.artist_name || '');
-        if (albumData.title) {
-          document.title = `${albumData.title} - ${APP_NAME}`;
-        }
+        console.log('Fetching chart data');
+        const response = await api.get('/public/ranking/top-songs');
+        const chartData = response.data.data;
+        console.log('Chart data fetched:', chartData);
+        setChart(chartData);
+        document.title = `Bảng xếp hạng - ${APP_NAME}`;
       } catch (err: any) {
-        console.error('Error fetching album:', err);
+        console.error('Error fetching chart:', err);
         if (err.response?.status === 404) {
-          setError('Không tìm thấy album');
+          setError('Không tìm thấy bảng xếp hạng');
         } else {
-          setError('Không thể tải chi tiết album');
+          setError('Không thể tải bảng xếp hạng');
         }
       } finally {
         setLoading(false);
       }
     };
 
-    fetchAlbumDetail();
-  }, [album_id, setArtistName]);
+    fetchChart();
+  }, []);
 
   const fetchUserPlaylists = async () => {
     if (!isAuthenticated || !userId) {
@@ -175,14 +228,16 @@ export const AlbumDetail: React.FC = () => {
       setIsModalOpen(false);
     } catch (err: any) {
       console.error('Error adding song to playlist:', err);
-
+      toast.error(err.response?.data?.message || 'Không thể thêm bài hát vào playlist', {
+        style: { background: 'black', color: 'white' },
+      });
     }
   };
 
   const handleSongClick = async (song: Song, index: number, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!isAuthenticated || !userId) {
-      toast.error('Vui lòng đăng nhập để phát bài hat', {
+      toast.error('Vui lòng đăng nhập để phát bài hát', {
         action: {
           label: 'Đăng nhập',
           onClick: () => navigate('/login'),
@@ -194,7 +249,7 @@ export const AlbumDetail: React.FC = () => {
     try {
       console.log('Handling song click:', { song_id: song.song_id, title: song.title });
       await addToQueue(song, true);
-      const queueItems: QueueItem[] = (album?.songs || []).map((s, i) => ({
+      const queueItems: QueueItem[] = (chart?.songs || []).map((s, i) => ({
         ...s,
         position: i + 1,
         is_current: i === index,
@@ -254,12 +309,14 @@ export const AlbumDetail: React.FC = () => {
       });
       return;
     }
-    if (!album?.songs || album.songs.length === 0) {
-
+    if (!chart?.songs || chart.songs.length === 0) {
+      toast.error('Danh sách bài hát rỗng', {
+        style: { background: 'black', color: 'white' },
+      });
       return;
     }
     try {
-      const songIds = album.songs.map(song => song.song_id);
+      const songIds = chart.songs.map(song => song.song_id);
       console.log('Handling play content with song_ids:', songIds);
       await playContent(songIds);
     } catch (error: any) {
@@ -268,10 +325,6 @@ export const AlbumDetail: React.FC = () => {
         style: { background: 'black', color: 'white' },
       });
     }
-  };
-
-  const handleRelatedAlbumClick = (album: RelatedAlbum) => {
-    navigate(`/albums/${album.album_id}`);
   };
 
   const handleDownloadClick = async (song: Song, e: React.MouseEvent) => {
@@ -324,9 +377,9 @@ export const AlbumDetail: React.FC = () => {
   };
 
   if (error) return <div className="text-red-500 text-center p-4">Lỗi: {error}</div>;
-  if (!album) return <div className="text-center p-4">Không tìm thấy album</div>;
+  if (!chart) return <div className="text-center p-4">Không tìm thấy bảng xếp hạng</div>;
 
-  const { title, img, artist_name, release_date, song_count, total_duration, songs, related_albums } = album;
+  const { image, description, total_songs, songs } = chart;
 
   return (
     <div className="min-h-screen text-white rounded-lg">
@@ -336,34 +389,34 @@ export const AlbumDetail: React.FC = () => {
           <Skeleton height={200} className="w-full rounded-lg" />
           <Skeleton height={40} className="w-full sm:w-1/2" />
           <div className="space-y-2">
-            {[...Array(3)].map((_, index) => (
+            {[...Array(5)].map((_, index) => (
               <Skeleton key={index} height={50} className="w-full" />
             ))}
           </div>
         </div>
       ) : (
         <div>
-          <div className={`${gradient} h-auto sm:h-64 mb-4 rounded-t-lg flex flex-col`}>
+          <div className={`bg-gradient-to-b from-purple-600 to-neutral-900 h-auto sm:h-64 mb-4 rounded-t-lg flex flex-col`}>
             <div className="flex flex-col sm:flex-row gap-4 items-center justify-start flex-1 py-4 px-4 sm:px-8">
               <div className="flex-shrink-0">
-                {img ? (
+                {image ? (
                   <img
-                    src={img}
-                    alt={title}
-                    className="w-40 h-40 sm:w-52 sm:h-52 object-cover rounded-sm"
+                    src={image}
+                    alt="Chart"
+                    className="w-40 h-40 sm:w-50 sm:h-50 object-cover rounded-sm"
                     loading="lazy"
                   />
                 ) : (
-                  <div className="w-40 h-40 sm:w-52 sm:h-52 bg-neutral-700 flex items-center justify-center rounded-sm">
+                  <div className="w-40 h-40 sm:w-50 sm:h-50 bg-neutral-700 flex items-center justify-center rounded-sm">
                     <span className="text-neutral-400 text-sm">No Image</span>
                   </div>
                 )}
               </div>
               <div className="text-center sm:text-start mt-2 sm:mt-0">
-                <h2 className="text-xs sm:text-sm text-white">Album</h2>
-                <h1 className="text-4xl sm:text-6xl md:text-7xl font-bold uppercase line-clamp-2">{title}</h1>
+                <h2 className="text-xs sm:text-sm text-white">Bảng xếp hạng</h2>
+                <h1 className="text-4xl sm:text-6xl md:text-6xl font-bold uppercase line-clamp-2">Bài hát hàng đầu tại Toàn Cầu</h1>
                 <p className="text-xs sm:text-sm text-gray-400 mt-2">
-                  {artist_name} • {release_date.split('-')[0]} • {song_count} bài hát • {formatDuration(total_duration)}
+                  {description} • {total_songs} bài hát
                 </p>
               </div>
             </div>
@@ -372,7 +425,6 @@ export const AlbumDetail: React.FC = () => {
                 <button onClick={handlePlayContent} className="hover:text-gray-300 active:text-gray-200">
                   <PlayIcon className="w-6 h-6 text-white" />
                 </button>
-                <ArrowDownTrayIcon className="w-6 h-6 text-white hover:text-gray-300 active:text-gray-200" />
                 <EllipsisHorizontalIcon className="w-6 h-6 text-white hover:text-gray-300 active:text-gray-200" />
               </div>
               <div className="flex items-center space-x-2">
@@ -384,6 +436,7 @@ export const AlbumDetail: React.FC = () => {
           <div className="p-4 sm:p-6 mt-2">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
+
                 <tbody>
                   {songs.map((song, index) => (
                     <tr
@@ -392,6 +445,12 @@ export const AlbumDetail: React.FC = () => {
                       onMouseEnter={() => setHoveredSongId(song.song_id)}
                       onMouseLeave={() => setHoveredSongId(null)}
                     >
+                      <td className="py-2 px-2 sm:px-4 w-16">
+                        <div className="flex items-center">
+                          <span className="text-gray-400 w-6 text-center">{song.rank}</span>
+                          <span className="text-gray-400 w-12 text-center">{formatRankChange(song.rank_change)}</span>
+                        </div>
+                      </td>
                       <td className="py-2 px-2 sm:px-4">
                         <div className="flex items-center">
                           <div className="relative w-10 h-10 sm:w-12 sm:h-12 mr-2 sm:mr-4">
@@ -449,10 +508,7 @@ export const AlbumDetail: React.FC = () => {
                         </div>
                       </td>
                       <td className="py-2 px-2 sm:px-4 text-gray-400 hidden sm:table-cell">
-                        {song.album_name || 'Đang cập nhật'}
-                      </td>
-                      <td className="py-2 px-2 sm:px-4 text-gray-400 hidden md:table-cell">
-                        {song.listen_count || 'Đang cập nhật'}
+                        {song.listen_count.toLocaleString()}
                       </td>
                       <td className="py-2 px-2 sm:px-4 text-gray-400">
                         {formatDuration(song.duration)}
@@ -487,35 +543,6 @@ export const AlbumDetail: React.FC = () => {
                 </tbody>
               </table>
             </div>
-            {related_albums.length > 0 && (
-              <div className="mt-8">
-                <h2 className="text-xl sm:text-2xl font-semibold mb-3">Album khác của {artist_name}</h2>
-                <div className="flex flex-wrap gap-2">
-                  {related_albums.map((relatedAlbum) => (
-                    <div
-                      key={relatedAlbum.album_id}
-                      className="flex flex-col items-center p-2 hover:bg-neutral-800 rounded-lg cursor-pointer transition-colors"
-                      onClick={() => handleRelatedAlbumClick(relatedAlbum)}
-                    >
-                      <img
-                        src={relatedAlbum.img || 'https://via.placeholder.com/144'}
-                        alt={relatedAlbum.title}
-                        className="w-32 h-32 sm:w-36 sm:h-36 rounded mb-2 object-cover"
-                        loading="lazy"
-                      />
-                      <div className="text-center">
-                        <span className="text-white font-medium text-sm sm:text-base w-full line-clamp-2">
-                          {relatedAlbum.title}
-                        </span>
-                        <span className="text-gray-400 text-xs">
-                          {relatedAlbum.release_date.split('-')[0]}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
           <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
             <DialogContent variant="dark" className="max-w-[90vw] sm:max-w-[600px]">

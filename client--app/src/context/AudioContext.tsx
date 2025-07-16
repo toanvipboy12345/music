@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
 import api from '../services/api';
@@ -73,9 +74,6 @@ export const AudioProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
     if (!song.audio_file_url) {
       console.error('Song lacks audio_file_url:', song);
-      toast.error('Bài hát không có URL âm thanh hợp lệ', {
-        style: { background: 'black', color: 'white' },
-      });
       throw new Error('Bài hát không có URL âm thanh hợp lệ');
     }
     try {
@@ -180,9 +178,7 @@ export const AudioProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       if (currentSong) {
         if (!currentSong.audio_file_url) {
           console.error('Current song lacks audio_file_url:', currentSong);
-          toast.error('Bài hát hiện tại không có URL âm thanh hợp lệ', {
-            style: { background: 'black', color: 'white' },
-          });
+
           return;
         }
         console.log('Setting current song in playContent:', currentSong);
@@ -190,9 +186,7 @@ export const AudioProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         setCurrentSongIndex(sortedQueue.findIndex((item: QueueItem) => item.is_current));
         setArtistName(currentSong.artist_name);
         setIsExpanded(false);
-        toast.success(`Đang phát: ${currentSong.title}`, {
-          style: { background: 'black', color: 'white' },
-        });
+
       } else {
         console.error('No current song found in queue:', sortedQueue);
         setCurrentSong(null);
@@ -206,9 +200,7 @@ export const AudioProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       console.log('Current queue after playContent:', sortedQueue);
     } catch (error: any) {
       console.error('Lỗi khi phát nội dung:', error.response?.data || error.message);
-      toast.error(error.response?.data?.message || 'Không thể phát nội dung', {
-        style: { background: 'black', color: 'white' },
-      });
+
       throw error;
     }
   };

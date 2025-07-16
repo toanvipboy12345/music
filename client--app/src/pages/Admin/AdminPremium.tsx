@@ -126,21 +126,11 @@ const AdminPremium: React.FC = () => {
   };
 
   // Fetch users
-  const fetchUsers = async () => {
-    try {
-      const response = await api.get('/admin/users', { params: { page: 1, limit: 1000 } });
-      setUsers(response.data.users || []);
-    } catch (error: any) {
-      toast.error('Không thể tải danh sách người dùng.', {
-        description: error.response?.data?.message || 'Vui lòng thử lại sau.',
-      });
-    }
-  };
+
 
   useEffect(() => {
     fetchPlans(searchPlans);
     fetchSubscriptions(pageSubscriptions, searchSubscriptions);
-    fetchUsers();
   }, [pageSubscriptions, searchPlans, searchSubscriptions]);
 
   // Handle search
