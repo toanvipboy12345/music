@@ -83,12 +83,15 @@ const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
 const path = require('path');
+const fs = require('fs');
+const { Dropbox } = require('dropbox');
 const authRoutes = require('./routes/authRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const publicRoutes = require('./routes/publicRoutes');
 const userRoutes = require('./routes/userRoutes');
 const errorMiddleware = require('./middleware/errors');
-const { sequelize, User, PremiumPlan, PremiumSubscription } = require('./models');
+const { sequelize, User, PremiumPlan, PremiumSubscription, SongListenStats } = require('./models');
+require('dotenv').config();
 
 const app = express();
 
@@ -101,6 +104,43 @@ app.use(morgan('dev'));
 app.use('/Uploads/songs', express.static(path.join(__dirname, 'Uploads/songs')));
 app.use('/Uploads/album', express.static(path.join(__dirname, 'Uploads/album')));
 app.use('/uploads/playlist', express.static(path.join(__dirname, 'Uploads/playlist')));
+
+// Khởi tạo Dropbox instance
+const dbx = new Dropbox({
+  clientId: process.env.DROPBOX_CLIENT_ID,
+  clientSecret: process.env.DROPBOX_CLIENT_SECRET,
+  refreshToken: process.env.DROPBOX_REFRESH_TOKEN,
+});
+
+// Kiểm tra Dropbox khi khởi động ứng dụng
+(async () => {
+  try {
+    if (process.env.DROPBOX_REFRESH_TOKEN) {
+      await dbx.usersGetCurrentAccount();
+      console.log('Kết nối Dropbox thành công khi khởi động');
+    } else {
+      console.log('Chưa có DROPBOX_REFRESH_TOKEN trong .env. Vui lòng cấu hình refresh_token.');
+    }
+  } catch (error) {
+    console.error('Lỗi khi kiểm tra Dropbox lúc khởi động:', error.message);
+  }
+})();
+
+// Middleware kiểm tra kết nối Dropbox
+app.use(async (req, res, next) => {
+  try {
+    if (process.env.DROPBOX_REFRESH_TOKEN) {
+      await dbx.usersGetCurrentAccount();
+      console.log('Kết nối Dropbox thành công cho request:', req.path);
+    } else {
+      console.warn('Chưa có DROPBOX_REFRESH_TOKEN trong .env. Vui lòng cấu hình refresh_token.');
+    }
+    next();
+  } catch (error) {
+    console.error('Lỗi Dropbox trong middleware:', error.message);
+    next();
+  }
+});
 
 // Routes
 app.use('/v1/auth', authRoutes);
@@ -174,7 +214,7 @@ const seedPremiumPlansIfNotExists = async () => {
   }
 };
 
-// Kết nối MySQL và seeding
+// Kết nối MySQL, Dropbox và seeding
 (async () => {
   try {
     await sequelize.authenticate();

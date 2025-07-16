@@ -7,6 +7,9 @@ const userController = require('../controllers/userController');
 const userPremiumController = require('../controllers/userPremiumController'); // Đảm bảo import đúng
 const downloadController = require('../controllers/downloadController');
 const isPremiumUser = require('../middleware/PremiumUser');
+const listenController = require('../controllers/listenController');
+
+const libraryController = require('../controllers/libraryController');
 // Playlist routes for authenticated users
 router.get('/playlists/user/:userId/summary', isUser, playlistController.getUserPlaylistsSummary);
 router.get('/playlists/user/:userId/:playlistId', isUser, playlistController.getPlaylistByUserId);
@@ -40,5 +43,12 @@ router.post('/premium/subscribe', isUser, userPremiumController.createPremiumSub
 router.delete('/premium/subscribe/:subscription_id', isUser, userPremiumController.cancelPremiumSubscription);
 router.get('/premium/plans/:plan_id', userPremiumController.getPremiumPlanById);
 // Download song route for premium users
-router.get('/download/song/:song_id', isUser, isPremiumUser, downloadController.downloadSong);
+router.get('/songs/:songId/download', isPremiumUser, downloadController.downloadSong);
+router.get('/download-history', isPremiumUser, downloadController.getDownloadHistory);
+// User library routes
+router.get('/library', isUser, libraryController.getUserLibrary);
+router.post('/listen/song/:id',isUser, listenController.incrementSongListen);
+router.get('/profile', isUser, userController.getUserProfile);
+router.post('/avatar', isUser, userController.updateAvatar); // Thêm tuyến đường mới cho avatar
+
 module.exports = router;

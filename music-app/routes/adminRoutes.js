@@ -6,6 +6,8 @@ const artistController = require('../controllers/artistController');
 const albumController = require('../controllers/albumController');
 const premiumController = require('../controllers/premiumController');
 const isAdmin = require('../middleware/Admin');
+const adminPlaylistController = require('../controllers/adminPlaylistController');
+const adminStatisticsController = require('../controllers/adminStatisticsController');
 
 // Genre routes
 router.get('/genres', isAdmin, genreController.getGenres);
@@ -39,4 +41,12 @@ router.get('/premium/plans/:plan_id', isAdmin, premiumController.getPremiumPlanB
 router.get('/premium/subscriptions', isAdmin, premiumController.getPremiumSubscriptions);
 router.post('/premium/subscriptions', isAdmin, premiumController.createPremiumSubscription);
 router.delete('/premium/subscriptions/:subscription_id', isAdmin, premiumController.cancelPremiumSubscription);
+// Admin Playlist routes
+router.post('/playlists', isAdmin, adminPlaylistController.createAdminPlaylist);
+router.get('/playlists/summary', isAdmin, adminPlaylistController.getAdminPlaylistsSummary);
+router.get('/playlists/:playlistId', isAdmin, adminPlaylistController.getAdminPlaylistById);
+// Admin Statistics routes
+router.get('/statistics', isAdmin, adminStatisticsController.getStatistics);
+router.get('/statistics/total-revenue', isAdmin, adminStatisticsController.getTotalRevenue);
+router.get('/statistics/revenue-by-plan', isAdmin, adminStatisticsController.getRevenueByPlan);
 module.exports = router;
