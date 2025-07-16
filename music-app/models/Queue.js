@@ -81,12 +81,10 @@ const Queue = sequelize.define('Queue', {
   audio_file_url: {
     type: DataTypes.STRING(255),
     allowNull: false,
-
   },
   img: {
     type: DataTypes.STRING(255),
     allowNull: true,
-
   },
   artist_id: {
     type: DataTypes.INTEGER,
@@ -129,6 +127,13 @@ const Queue = sequelize.define('Queue', {
 }, {
   tableName: 'Queue',
   timestamps: false,
+  indexes: [
+    {
+      unique: true,
+      fields: ['user_id', 'song_id'],
+      name: 'unique_user_song',
+    },
+  ],
   hooks: {
     beforeUpdate: async (queue, options) => {
       console.log('Running beforeUpdate hook for queue_id:', queue.queue_id);
