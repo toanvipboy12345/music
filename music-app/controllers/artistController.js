@@ -263,7 +263,7 @@ exports.getArtistDetail = async (req, res) => {
         
         // Lấy tên nghệ sĩ chính
         const mainArtist = await Artist.findByPk(songData.artist_id, {
-          attributes: ['stage_name'],
+          attributes: ['artist_id', 'stage_name'],
         });
         
         // Lấy danh sách nghệ sĩ góp mặt
@@ -272,14 +272,17 @@ exports.getArtistDetail = async (req, res) => {
           const featIds = JSON.parse(songData.feat_artist_ids);
           featArtists = await Artist.findAll({
             where: { artist_id: featIds },
-            attributes: ['stage_name'],
+            attributes: ['artist_id', 'stage_name'],
           });
-          featArtists = featArtists.map(artist => artist.stage_name);
+          featArtists = featArtists.map(artist => ({
+            artist_id: artist.artist_id,
+            stage_name: artist.stage_name,
+          }));
         }
 
         // Áp dụng baseUrl cho audio_file_url và img
-        songData.audio_file_url = songData.audio_file_url ? `${baseUrl}${songData.audio_file_url}` : null;
         songData.img = songData.img ? `${baseUrl}${songData.img}` : null;
+        songData.audio_file_url = songData.audio_file_url;
 
         return {
           song_id: songData.song_id,
@@ -324,6 +327,8 @@ exports.getArtistDetail = async (req, res) => {
     res.status(500).json({ message: 'Lỗi server', error: error.message });
   }
 };
+
+module.exports = exports;
 
 exports.updateArtistBio = async (req, res) => {
   console.log('PUT /artists/:id/bio called with body:', req.body, 'and params:', req.params);

@@ -5,6 +5,20 @@ const { Artist, Song, Genre } = require('../models');
 const fs = require('fs');
 const path = require('path');
 const Busboy = require('busboy');
+const { Dropbox } = require('dropbox');
+require('dotenv').config();
+
+// Khởi tạo Dropbox client
+const dbx = new Dropbox({
+  clientId: process.env.DROPBOX_CLIENT_ID,
+  clientSecret: process.env.DROPBOX_CLIENT_SECRET,
+  refreshToken: process.env.DROPBOX_REFRESH_TOKEN,
+});
+
+// Hàm tạo liên kết trực tiếp từ Dropbox
+function getDropboxDirectLink(shareLink) {
+  return shareLink.replace('www.dropbox.com', 'dl.dropboxusercontent.com').replace('?dl=0', '');
+}
 
 exports.createSong = async (req, res) => {
   try {
@@ -19,6 +33,7 @@ exports.createSong = async (req, res) => {
     let audio_file = null;
     let img_file = null;
     const fields = {};
+    const fileBuffers = {};
 
     busboy.on('field', (name, value) => {
       fields[name] = value;
@@ -28,7 +43,6 @@ exports.createSong = async (req, res) => {
       console.log('Received file:', { fieldname, filename, mimeType });
       const fileExt = filename.split('.').pop();
       const newFileName = `${uuidv4()}.${fileExt}`;
-      const savePath = path.join(uploadDir, newFileName);
 
       if (fieldname === 'audio_file') {
         if (!['audio/mpeg', 'audio/wav'].includes(mimeType)) {
@@ -36,25 +50,27 @@ exports.createSong = async (req, res) => {
           file.resume();
           return res.status(400).json({ message: 'Chỉ hỗ trợ file MP3 hoặc WAV' });
         }
-        audio_file = {
-          path: savePath,
-          url: `/uploads/songs/${newFileName}`,
-        };
-        console.log('Audio file info:', audio_file);
+        audio_file = { name: newFileName };
+        const chunks = [];
+        file.on('data', (chunk) => {
+          chunks.push(chunk);
+        });
+        file.on('end', () => {
+          fileBuffers[fieldname] = Buffer.concat(chunks);
+          console.log(`File ${fieldname} buffered in memory`);
+        });
       } else if (fieldname === 'img_file') {
         if (!['image/jpeg', 'image/png', 'image/gif'].includes(mimeType)) {
           console.log('Invalid image file type:', mimeType);
           file.resume();
           return res.status(400).json({ message: 'Chỉ hỗ trợ file JPEG, PNG hoặc GIF' });
         }
+        const savePath = path.join(uploadDir, newFileName);
         img_file = {
           path: savePath,
-          url: `/uploads/songs/${newFileName}`,
+          url: `/Uploads/songs/${newFileName}`,
         };
         console.log('Image file info:', img_file);
-      }
-
-      if (audio_file || img_file) {
         const writeStream = fs.createWriteStream(savePath);
         file.pipe(writeStream);
         writeStream.on('finish', () => {
@@ -84,6 +100,7 @@ exports.createSong = async (req, res) => {
           return res.status(400).json({ message: 'Danh sách ca sĩ không hợp lệ' });
         }
 
+        // Validation
         if (!audio_file) {
           console.log('No audio file uploaded');
           return res.status(400).json({ message: 'Chưa upload file audio' });
@@ -113,6 +130,7 @@ exports.createSong = async (req, res) => {
           return res.status(400).json({ message: 'Giá trị is_downloadable không hợp lệ' });
         }
 
+        // Kiểm tra nghệ sĩ
         const artistIds = [];
         for (const artist_name of parsed_artist_names) {
           const artist = await Artist.findOne({ where: { stage_name: artist_name } });
@@ -123,52 +141,72 @@ exports.createSong = async (req, res) => {
           artistIds.push(artist.artist_id);
         }
 
+        // Kiểm tra thể loại
         const genre = await Genre.findByPk(genre_id);
         console.log('Genre lookup for genre_id:', genre_id, genre ? genre.toJSON() : null);
         if (!genre) {
           return res.status(400).json({ message: 'Thể loại không tồn tại' });
         }
 
-        const audio_file_url = audio_file.url;
-        console.log('Checking audio_file_url:', audio_file_url);
-        if (!audio_file_url || typeof audio_file_url !== 'string' || !audio_file_url.startsWith('/uploads/songs/')) {
-          console.log('Audio URL validation failed:', audio_file_url);
-          return res.status(400).json({ message: 'URL file audio không hợp lệ' });
+        // Upload file audio lên Dropbox
+        let audio_file_url = null;
+        let audio_dropbox_path = null;
+        if (audio_file && fileBuffers['audio_file']) {
+          audio_dropbox_path = `/songs/${audio_file.name}`;
+          await dbx.filesUpload({
+            path: audio_dropbox_path,
+            contents: fileBuffers['audio_file'],
+            mode: 'add',
+          });
+          console.log('Uploaded audio to Dropbox:', audio_dropbox_path);
+
+          // Tạo shared link và chuyển thành direct link
+          const sharedLinkResponse = await dbx.sharingCreateSharedLinkWithSettings({
+            path: audio_dropbox_path,
+            settings: { requested_visibility: 'public' },
+          });
+          audio_file_url = getDropboxDirectLink(sharedLinkResponse.result.url);
+          console.log('Audio direct link:', audio_file_url);
         }
+
+        // Kiểm tra URL ảnh
         let img_url = null;
         if (img_file) {
           img_url = img_file.url;
           console.log('Checking img_url:', img_url);
-          if (!img_url || typeof img_url !== 'string' || !img_url.startsWith('/uploads/songs/')) {
+          if (!img_url || typeof img_url !== 'string' || !img_url.startsWith('/Uploads/songs/')) {
             console.log('Image URL validation failed:', img_url);
             return res.status(400).json({ message: 'URL file ảnh không hợp lệ' });
           }
         }
 
+        // Tạo bài hát trong cơ sở dữ liệu
         console.log('Creating song with data:', {
           title,
           duration: parseInt(duration),
           release_date: release_date || null,
           audio_file_url,
+          audio_dropbox_path,
           img: img_file ? img_file.url : null,
           artist_id: artistIds[0],
           feat_artist_ids: artistIds.length > 1 ? JSON.stringify(artistIds.slice(1)) : null,
           genre_id: parseInt(genre_id),
           is_downloadable: is_downloadable === 'true',
-          listen_count: 0
+          listen_count: 0,
         });
 
         const song = await Song.create({
           title,
           duration: parseInt(duration),
           release_date: release_date || null,
-          audio_file_url: audio_file.url,
+          audio_file_url,
+          audio_dropbox_path,
           img: img_file ? img_file.url : null,
           artist_id: artistIds[0],
           feat_artist_ids: artistIds.length > 1 ? JSON.stringify(artistIds.slice(1)) : null,
           genre_id: parseInt(genre_id),
           is_downloadable: is_downloadable === 'true',
-          listen_count: 0 // Khởi tạo listen_count
+          listen_count: 0,
         });
 
         console.log('Song created:', song.toJSON());
@@ -181,19 +219,19 @@ exports.createSong = async (req, res) => {
             title,
             duration: song.duration,
             release_date: song.release_date,
-            audio_file_url: `${baseUrl}${song.audio_file_url}`,
+            audio_file_url: song.audio_file_url,
             img: song.img ? `${baseUrl}${song.img}` : null,
             artist_id: song.artist_id,
             feat_artist_ids: song.feat_artist_ids ? JSON.parse(song.feat_artist_ids) : [],
             genre_id: song.genre_id,
             is_downloadable: song.is_downloadable,
-            listen_count: song.listen_count // Trả về listen_count
+            listen_count: song.listen_count,
           },
         });
       } catch (error) {
         console.error('Error in busboy finish:', error);
-        if (error.name === 'SequelizeValidationError') {
-          const errors = error.errors.map((err) => err.message);
+        if (error.name === 'SequelizeValidationError' || error.name === 'SequelizeDatabaseError') {
+          const errors = error.errors ? error.errors.map((err) => err.message) : [error.message];
           return res.status(400).json({ message: 'Lỗi validation', errors });
         }
         res.status(500).json({ message: 'Lỗi server', error: error.message });
@@ -239,7 +277,7 @@ exports.getSong = async (req, res) => {
         'feat_artist_ids',
         'genre_id',
         'is_downloadable',
-        'listen_count', // Thêm listen_count
+        'listen_count',
         'created_at',
       ],
     });
@@ -265,7 +303,7 @@ exports.getSong = async (req, res) => {
     delete songData.Genre;
 
     const baseUrl = `${req.protocol}://${req.get('host')}`;
-    songData.audio_file_url = songData.audio_file_url ? `${baseUrl}${songData.audio_file_url}` : null;
+    songData.audio_file_url = songData.audio_file_url;
     songData.img = songData.img ? `${baseUrl}${songData.img}` : null;
 
     res.json({
@@ -319,7 +357,7 @@ exports.getAllSongs = async (req, res) => {
         'feat_artist_ids',
         'genre_id',
         'is_downloadable',
-        'listen_count', // Thêm listen_count
+        'listen_count',
         'created_at',
       ],
       limit: parseInt(limit),
@@ -348,7 +386,7 @@ exports.getAllSongs = async (req, res) => {
         songData.genre = songData.Genre;
         delete songData.Genre;
 
-        songData.audio_file_url = songData.audio_file_url ? `${baseUrl}${songData.audio_file_url}` : null;
+        songData.audio_file_url = songData.audio_file_url;
         songData.img = songData.img ? `${baseUrl}${songData.img}` : null;
 
         return songData;
@@ -391,6 +429,7 @@ exports.updateSong = async (req, res) => {
     let audio_file = null;
     let img_file = null;
     const fields = {};
+    const fileBuffers = {};
 
     busboy.on('field', (name, value) => {
       fields[name] = value;
@@ -400,7 +439,6 @@ exports.updateSong = async (req, res) => {
       console.log('Received file:', { fieldname, filename, mimeType });
       const fileExt = filename.split('.').pop();
       const newFileName = `${uuidv4()}.${fileExt}`;
-      const savePath = path.join(uploadDir, newFileName);
 
       if (fieldname === 'audio_file') {
         if (!['audio/mpeg', 'audio/wav'].includes(mimeType)) {
@@ -408,25 +446,27 @@ exports.updateSong = async (req, res) => {
           file.resume();
           return res.status(400).json({ message: 'Chỉ hỗ trợ file MP3 hoặc WAV' });
         }
-        audio_file = {
-          path: savePath,
-          url: `/uploads/songs/${newFileName}`,
-        };
-        console.log('Audio file info:', audio_file);
+        audio_file = { name: newFileName };
+        const chunks = [];
+        file.on('data', (chunk) => {
+          chunks.push(chunk);
+        });
+        file.on('end', () => {
+          fileBuffers[fieldname] = Buffer.concat(chunks);
+          console.log(`File ${fieldname} buffered in memory`);
+        });
       } else if (fieldname === 'img_file') {
         if (!['image/jpeg', 'image/png', 'image/gif'].includes(mimeType)) {
           console.log('Invalid image file type:', mimeType);
           file.resume();
           return res.status(400).json({ message: 'Chỉ hỗ trợ file JPEG, PNG hoặc GIF' });
         }
+        const savePath = path.join(uploadDir, newFileName);
         img_file = {
           path: savePath,
-          url: `/uploads/songs/${newFileName}`,
+          url: `/Uploads/songs/${newFileName}`,
         };
         console.log('Image file info:', img_file);
-      }
-
-      if (audio_file || img_file) {
         const writeStream = fs.createWriteStream(savePath);
         file.pipe(writeStream);
         writeStream.on('finish', () => {
@@ -464,6 +504,7 @@ exports.updateSong = async (req, res) => {
           }
         }
 
+        // Validation
         if (title && (typeof title !== 'string' || title.length < 1 || title.length > 100)) {
           console.log('Invalid title:', title);
           return res.status(400).json({ message: 'Tiêu đề bài hát không hợp lệ' });
@@ -489,6 +530,7 @@ exports.updateSong = async (req, res) => {
           return res.status(400).json({ message: 'Giá trị is_downloadable không hợp lệ' });
         }
 
+        // Kiểm tra nghệ sĩ
         let artistIds = [];
         if (parsed_artist_names) {
           for (const artist_name of parsed_artist_names) {
@@ -501,6 +543,7 @@ exports.updateSong = async (req, res) => {
           }
         }
 
+        // Kiểm tra thể loại
         if (genre_id) {
           const genre = await Genre.findByPk(genre_id);
           console.log('Genre lookup for genre_id:', genre_id, genre ? genre.toJSON() : null);
@@ -509,20 +552,40 @@ exports.updateSong = async (req, res) => {
           }
         }
 
-        let oldAudioFilePath = null;
-        let oldImgFilePath = null;
-        if (audio_file && song.audio_file_url) {
-          oldAudioFilePath = path.join(__dirname, '../', song.audio_file_url);
+        // Upload file audio lên Dropbox
+        let audio_file_url = song.audio_file_url;
+        let audio_dropbox_path = song.audio_dropbox_path;
+        if (audio_file && fileBuffers['audio_file']) {
+          audio_dropbox_path = `/songs/${audio_file.name}`;
+          await dbx.filesUpload({
+            path: audio_dropbox_path,
+            contents: fileBuffers['audio_file'],
+            mode: 'add',
+          });
+          console.log('Uploaded audio to Dropbox:', audio_dropbox_path);
+
+          // Tạo shared link và chuyển thành direct link
+          const sharedLinkResponse = await dbx.sharingCreateSharedLinkWithSettings({
+            path: audio_dropbox_path,
+            settings: { requested_visibility: 'public' },
+          });
+          audio_file_url = getDropboxDirectLink(sharedLinkResponse.result.url);
+          console.log('Audio direct link:', audio_file_url);
         }
+
+        // Xóa file ảnh cũ nếu có
+        let oldImgFilePath = null;
         if (img_file && song.img) {
           oldImgFilePath = path.join(__dirname, '../', song.img);
         }
 
+        // Cập nhật bài hát
         const updateData = {
           title: title || song.title,
           duration: duration ? parseInt(duration) : song.duration,
           release_date: release_date || song.release_date,
-          audio_file_url: audio_file ? audio_file.url : song.audio_file_url,
+          audio_file_url,
+          audio_dropbox_path,
           img: img_file ? img_file.url : song.img,
           artist_id: artistIds.length > 0 ? artistIds[0] : song.artist_id,
           feat_artist_ids: artistIds.length > 1 ? JSON.stringify(artistIds.slice(1)) : song.feat_artist_ids,
@@ -533,10 +596,6 @@ exports.updateSong = async (req, res) => {
         console.log('Updating song with data:', updateData);
         await song.update(updateData);
 
-        if (oldAudioFilePath && fs.existsSync(oldAudioFilePath)) {
-          fs.unlinkSync(oldAudioFilePath);
-          console.log('Deleted old audio file:', oldAudioFilePath);
-        }
         if (oldImgFilePath && fs.existsSync(oldImgFilePath)) {
           fs.unlinkSync(oldImgFilePath);
           console.log('Deleted old image file:', oldImgFilePath);
@@ -544,7 +603,7 @@ exports.updateSong = async (req, res) => {
 
         const baseUrl = `${req.protocol}://${req.get('host')}`;
         const updatedSong = song.toJSON();
-        updatedSong.audio_file_url = updatedSong.audio_file_url ? `${baseUrl}${updatedSong.audio_file_url}` : null;
+        updatedSong.audio_file_url = updatedSong.audio_file_url;
         updatedSong.img = updatedSong.img ? `${baseUrl}${updatedSong.img}` : null;
         updatedSong.feat_artist_ids = updatedSong.feat_artist_ids ? JSON.parse(updatedSong.feat_artist_ids) : [];
 
@@ -554,8 +613,8 @@ exports.updateSong = async (req, res) => {
         });
       } catch (error) {
         console.error('Error in busboy finish:', error);
-        if (error.name === 'SequelizeValidationError') {
-          const errors = error.errors.map((err) => err.message);
+        if (error.name === 'SequelizeValidationError' || error.name === 'SequelizeDatabaseError') {
+          const errors = error.errors ? error.errors.map((err) => err.message) : [error.message];
           return res.status(400).json({ message: 'Lỗi validation', errors });
         }
         res.status(500).json({ message: 'Lỗi server', error: error.message });
@@ -583,13 +642,17 @@ exports.deleteSong = async (req, res) => {
       return res.status(404).json({ message: 'Bài hát không tồn tại' });
     }
 
-    if (song.audio_file_url) {
-      const audioFilePath = path.join(__dirname, '../', song.audio_file_url);
-      if (fs.existsSync(audioFilePath)) {
-        fs.unlinkSync(audioFilePath);
-        console.log('Deleted audio file:', audioFilePath);
+    // Xóa file audio trên Dropbox
+    if (song.audio_dropbox_path) {
+      try {
+        await dbx.filesDeleteV2({ path: song.audio_dropbox_path });
+        console.log('Deleted audio file from Dropbox:', song.audio_dropbox_path);
+      } catch (error) {
+        console.error('Error deleting audio file from Dropbox:', error);
       }
     }
+
+    // Xóa file ảnh cục bộ
     if (song.img) {
       const imgFilePath = path.join(__dirname, '../', song.img);
       if (fs.existsSync(imgFilePath)) {
@@ -607,4 +670,3 @@ exports.deleteSong = async (req, res) => {
     res.status(500).json({ message: 'Lỗi server', error: error.message });
   }
 };
-
